@@ -1,0 +1,78 @@
+---
+title: "Real estate values and the Flint water crisis"
+author: "Ilse Paniagua"
+date: "9/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+#install.packages("ZillowR")
+library(ZillowR)
+library(censusapi)
+library(tidyverse)
+```
+
+https://www.zillow.com/howto/api/GetChart.htm
+
+XX days on Zillow
+Price
+Current rates per loan type
+GetZestimate22
+
+# Census data for the city of Flint between 2010-2016
+
+```{r}
+cs_key <- "99821ff046ee033b7b76cbae65f421bf9136217f"
+```
+
+In the following, we request basic socio-demographic information (population, median age, median household income, income per capita) for cities and villages in the state of Illinois.
+
+```{r Available data census}
+
+apis <- listCensusApis()
+View(apis)
+
+#We are interested in the American Community Survey 5-Year Data (2009-2017), name= acs/acs5/cprofile
+
+```
+
+Requesting information from the American Community Survey 5-Year Data (2009-2017).
+
+```{r}
+#Obtaining variable names
+
+ac5_vars <- listCensusMetadata(name = "acs/acs5", vintage=2017,
+    type = "variables")
+
+#Groups of interest:
+#B19001B : income for black households (categories)
+#B19001A : income for white households (categories)
+
+#B01001B : sex by age for black households (categories)
+#B01001A : sex by age for white households (categories)
+
+#B23024 : poverty status by disability status and employment (categories)
+
+#B11016 : household size by household type (categories)
+
+ac5_geo <- listCensusMetadata(name = "acs/acs5", vintage=2017,
+    type = "geographies")
+
+head(ac5_vars)
+```
+
+
+```{r}
+acs_il <- getCensus(name = "acs/acs5/cprofile",
+                    vintage = 2017, 
+                    vars = c("NAME", "B01001_001E", "B06002_001E", "B19013_001E", "B19301_001E"), 
+                    region = "place:*", 
+                    regionin = "state:17",
+                    key = cs_key)
+head(acs_il)
+```
+
