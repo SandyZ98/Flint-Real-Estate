@@ -29,7 +29,8 @@ GetZestimate22
 cs_key <- "99821ff046ee033b7b76cbae65f421bf9136217f"
 ```
 
-In the following, we request basic socio-demographic information (population, median age, median household income, income per capita) for cities and villages in the state of Illinois.
+Reference:
+https://hrecht.github.io/censusapi/articles/getting-started.html
 
 ```{r Available data census}
 
