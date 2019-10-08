@@ -72,24 +72,46 @@ ac5_vars <- listCensusMetadata(name = "acs/acs5", vintage=2017,
 ac5_geo <- listCensusMetadata(name = "acs/acs5", vintage=2017,
     type = "geographies")
 
-#B19001B : income for black households (categories)
-#B19001A : income for white households (categories)
-#B01001B : sex by age for black households (categories)
-#B01001A : sex by age for white households (categories)
-#B23024 : poverty status by disability status and employment (categories)
-#B11016 : household size by household type (categories)
-#B25107: home value by year structure was built
+```
+Groups:
+B19001B : income for black households (categories)
+B19001A : income for white households (categories)
+B01001B : sex by age for black households (categories)
+B01001A : sex by age for white households (categories)
+B23024 : poverty status by disability status and employment (categories)
+B11016 : household size by household type (categories)
+B25107: home value by year structure was built
 
+Totals:
+B19001B_001E: income for black households
+B19001A_001E: income for white households
+B01001B_017E: total female (black)
+B01001B_002E: total male (black)
+B01001B_001E: total black
+B01001A_001E: total white
+B01001A_002E: total male (white)
+B01001A_017E: total female (white)
+B01001A_018E: female under 5 years
+B01001G_003E: male under 5 years
+B11016_002E: family households (note: need to calculate proportion of family HH)
+B11016_001E: total number of households
+B25107_001E: median home value
+
+
+```{r Variable names}
+acs5_names <-c("state","county","tract","income_black","income_white","f_black","m_black","black","white","m_white","f_white","f_under5","m_under5","fam_hh","hh","homevalue")
 ```
 
 The state of Michigan is 026, and Genessee county is 049.
+
+The metropolian statistical area is: 22420
 
 The census tracts of interest (39, obtained from Census website) are: 000100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900
 
 ```{r}
 
 #Comparative tables
-flint_acs5 <- getCensus(name = "acs/acs5/cprofile",
+flint_acscomp <- getCensus(name = "acs/acs5/cprofile",
                     vintage = 2017, 
                     vars = c("NAME", "group(CP03)"), 
                     region = "metropolitan statistical area/micropolitan statistical area: 22420",
@@ -99,11 +121,18 @@ flint_acs5 <- getCensus(name = "acs/acs5/cprofile",
 
 #5 year detailed tables
 
-flint_2010 <- getCensus(name = "acs/acs5", vintage = 2010,
-vars = c("B01001_001E", "NAME", "B01002_001E", "B19013_001E"),
-region = "tract:*", regionin = "state:26+county:049", key = cs_key )
-head(df)
+years <- c("2010","2011","2012","2013","2014","2015","2016","2017")
 
+flint_acs5 <- matrix()
+
+for(i in years) {
+
+flint_partial <- getCensus(name = "acs/acs5", vintage = i,
+vars = c("NAME", "B19001B_001E","B19001A_001E","B01001B_017E","B01001B_002E","B01001B_001E","B01001A_001E","B01001A_002E","B01001A_017E","B01001A_018E","B01001G_003E","B11016_002E","B11016_001E","B25107_001E"),
+region = "tract:*", regionin = "state:26+county:049", key = cs_key )
+
+flint_acs5 <- cbind(flint_acs5,flint_partial)
+}
 
 
 #This should work as examples
