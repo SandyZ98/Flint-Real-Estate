@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r include=FALSE}
 #install.packages("ZillowR")
+#install.packages("censusapi")
 library(ZillowR)
 library(censusapi)
 library(tidyverse)
@@ -29,51 +30,113 @@ GetZestimate22
 cs_key <- "99821ff046ee033b7b76cbae65f421bf9136217f"
 ```
 
-Reference:
+References:
 https://hrecht.github.io/censusapi/articles/getting-started.html
+
+https://datausa.io/profile/geo/flint-mi/
 
 ```{r Available data census}
 
 apis <- listCensusApis()
 View(apis)
 
-#We are interested in the American Community Survey 5-Year Data (2009-2017), name= acs/acs5/cprofile
+#We are interested in the American Community Survey 5-Year Data (2009-2017), name= acs/acs5
 
 ```
 
-Requesting information from the American Community Survey 5-Year Data (2009-2017).
+Metadata information from the American Community Survey 5-Year Data (2009-2017).
 
 ```{r}
-#Obtaining variable names
+
+#Comparative tables:
+
+ac5c_vars <- listCensusMetadata(name = "acs/acs5/cprofile", vintage=2017,
+    type = "variables")
+
+#Groups of interest for comparative tables:
+#CP03: Below poverty level
+#CP05: Race
+#CP05: Sex
+#CP04: Housing characteristics
+
+
+ac5c_geo <- listCensusMetadata(name = "acs/acs5/cprofile", vintage=2017,
+    type = "geographies")
+
+
+#5 year detailed tables
 
 ac5_vars <- listCensusMetadata(name = "acs/acs5", vintage=2017,
     type = "variables")
 
-#Groups of interest:
-#B19001B : income for black households (categories)
-#B19001A : income for white households (categories)
-
-#B01001B : sex by age for black households (categories)
-#B01001A : sex by age for white households (categories)
-
-#B23024 : poverty status by disability status and employment (categories)
-
-#B11016 : household size by household type (categories)
-
 ac5_geo <- listCensusMetadata(name = "acs/acs5", vintage=2017,
     type = "geographies")
 
-head(ac5_vars)
+#B19001B : income for black households (categories)
+#B19001A : income for white households (categories)
+#B01001B : sex by age for black households (categories)
+#B01001A : sex by age for white households (categories)
+#B23024 : poverty status by disability status and employment (categories)
+#B11016 : household size by household type (categories)
+#B25107: home value by year structure was built
+
 ```
 
+The state of Michigan is 026, and Genessee county is 049.
+
+The census tracts of interest (39, obtained from Census website) are: 000100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900
 
 ```{r}
-acs_il <- getCensus(name = "acs/acs5/cprofile",
+
+#Comparative tables
+flint_acs5 <- getCensus(name = "acs/acs5/cprofile",
                     vintage = 2017, 
-                    vars = c("NAME", "B01001_001E", "B06002_001E", "B19013_001E", "B19301_001E"), 
-                    region = "place:*", 
-                    regionin = "state:17",
+                    vars = c("NAME", "group(CP03)"), 
+                    region = "metropolitan statistical area/micropolitan statistical area: 22420",
                     key = cs_key)
-head(acs_il)
+
+#A lot of missing data, do data for each of the five years (just one estimate). The geographic level is inadquate (data only available for the city of Flint in aggregate.)
+
+#5 year detailed tables
+
+flint_2010 <- getCensus(name = "acs/acs5", vintage = 2010,
+vars = c("B01001_001E", "NAME", "B01002_001E", "B19013_001E"),
+region = "tract:*", regionin = "state:26+county:049", key = cs_key )
+head(df)
+
+
+
+#This should work as examples
+acs_comparison <- getCensus(name = "acs/acs1/cprofile",
+    vintage = 2017, 
+    vars = c("NAME", "CP03_2013_025E", "CP03_2014_025E", "CP03_2015_025E", "CP03_2016_025E", "CP03_2017_025E"), 
+    region = "metropolitan statistical area/micropolitan statistical area:*",
+    key = cs_key)
+head(acs_comparison)
+
+#List of counties
+acs_group <- getCensus(name = "acs/acs5",
+vintage = 2017,
+vars = c("NAME", "group(B19013)"),
+region = "county:*",
+key = cs_key)
+
+#List of tracts in Michigan 
+df <- getCensus(name = "acs/acs5", vintage = 2017,
+vars = c("B01001_001E", "NAME", "B01002_001E", "B19013_001E"),
+region = "tract:*", regionin = "state:26", key = cs_key )
+head(df)
+
+
+
+```
+
+```{r}
+#Merging tracts from 2010-2018
+
+
+
+#Keeping only tracts of interest
+tracts <- c(000100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900)
 ```
 
