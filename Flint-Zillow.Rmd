@@ -24,7 +24,7 @@ Price
 Current rates per loan type
 GetZestimate22
 
-# Census data for the city of Flint between 2010-2016
+# Gathering Flint Census data (2010-2017)
 
 ```{r}
 cs_key <- "99821ff046ee033b7b76cbae65f421bf9136217f"
@@ -47,23 +47,6 @@ View(apis)
 Metadata information from the American Community Survey 5-Year Data (2009-2017).
 
 ```{r}
-
-#Comparative tables:
-
-ac5c_vars <- listCensusMetadata(name = "acs/acs5/cprofile", vintage=2017,
-    type = "variables")
-
-#Groups of interest for comparative tables:
-#CP03: Below poverty level
-#CP05: Race
-#CP05: Sex
-#CP04: Housing characteristics
-
-
-ac5c_geo <- listCensusMetadata(name = "acs/acs5/cprofile", vintage=2017,
-    type = "geographies")
-
-
 #5 year detailed tables
 
 ac5_vars <- listCensusMetadata(name = "acs/acs5", vintage=2017,
@@ -73,99 +56,136 @@ ac5_geo <- listCensusMetadata(name = "acs/acs5", vintage=2017,
     type = "geographies")
 
 ```
-Groups:
-B19001B : income for black households (categories)
-B19001A : income for white households (categories)
-B01001B : sex by age for black households (categories)
-B01001A : sex by age for white households (categories)
-B23024 : poverty status by disability status and employment (categories)
-B11016 : household size by household type (categories)
-B25107: home value by year structure was built
+From the tables above we obtain the variables of interest:
+
+```{r}
+myvars <- c("B19001B_001E","B19001A_001E","B01001B_017E","B01001B_002E","B01001B_001E","B01001A_001E","B01001_003E","B01001A_017E","B01001_027E","B01001_003E","B11016_002E","B11016_001E","B25107_001E")
+```
 
 Totals:
+
 B19001B_001E: income for black households
 B19001A_001E: income for white households
 B01001B_017E: total female (black)
 B01001B_002E: total male (black)
 B01001B_001E: total black
 B01001A_001E: total white
-B01001A_002E: total male (white)
+B01001_003E: total male (white)
 B01001A_017E: total female (white)
-B01001A_018E: female under 5 years
-B01001G_003E: male under 5 years
+B01001_027E: female under 5 years
+B01001_003E: male under 5 years
 B11016_002E: family households (note: need to calculate proportion of family HH)
 B11016_001E: total number of households
 B25107_001E: median home value
 
-
-```{r Variable names}
-acs5_names <-c("state","county","tract","income_black","income_white","f_black","m_black","black","white","m_white","f_white","f_under5","m_under5","fam_hh","hh","homevalue")
-```
+B25034_010E: built 1940-1949
+B25034_009E: built 1950-1959
+B25034_008E: built 1960-1969
+B25034_007E: built 1970-1979
+B25034_006E: built 1980-1989
+B25034_005E: built 1990-1999
+B25034_004E: built 2000-2009
 
 The state of Michigan is 026, and Genessee county is 049.
 
-The metropolian statistical area is: 22420
-
-The census tracts of interest (39, obtained from Census website) are: 000100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900
-
 ```{r}
-
-#Comparative tables
-flint_acscomp <- getCensus(name = "acs/acs5/cprofile",
-                    vintage = 2017, 
-                    vars = c("NAME", "group(CP03)"), 
-                    region = "metropolitan statistical area/micropolitan statistical area: 22420",
-                    key = cs_key)
-
-#A lot of missing data, do data for each of the five years (just one estimate). The geographic level is inadquate (data only available for the city of Flint in aggregate.)
-
 #5 year detailed tables
+
+#Variables that are only needed once (municipality names and housing structure age)
+
+flint_strage <- getCensus(name = "acs/acs5", vintage = 2010,
+vars = c("NAME","B25034_010E","B25034_009E","B25034_008E","B25034_007E","B25034_006E","B25034_005E","B25034_004E"),
+region = "tract:*", regionin = "state:26+county:049", key = cs_key )
+
+colnames(flint_strage) <- c("state","county","tract","desc","built_1940-1949","built_1950-1959","built_1960-1969","built_1970-1979","built_1980-1989","built_1990-1999","built_2000-2009")
+
+glimpse(flint_strage)
+```
+
+Now we gather data for the years 2011-2017 for the variables that would change from year to year.
+```{r}
+#Loop for years 2010-2017
+flint_acs5 <- matrix()
 
 years <- c("2010","2011","2012","2013","2014","2015","2016","2017")
 
-flint_acs5 <- matrix()
-
-for(i in years) {
+for(i in years){
 
 flint_partial <- getCensus(name = "acs/acs5", vintage = i,
-vars = c("NAME", "B19001B_001E","B19001A_001E","B01001B_017E","B01001B_002E","B01001B_001E","B01001A_001E","B01001A_002E","B01001A_017E","B01001A_018E","B01001G_003E","B11016_002E","B11016_001E","B25107_001E"),
+vars = myvars,
 region = "tract:*", regionin = "state:26+county:049", key = cs_key )
+
+colnames(flint_partial) <-c("state","county","tract","income_black","income_white","f_black","m_black","black","white","m_white","f_white","f_under5","m_under5","fam_hh","hh","homevalue")
+
+#Male under 5: B18101_003E
 
 flint_acs5 <- cbind(flint_acs5,flint_partial)
 }
 
+```
 
-#This should work as examples
-acs_comparison <- getCensus(name = "acs/acs1/cprofile",
-    vintage = 2017, 
-    vars = c("NAME", "CP03_2013_025E", "CP03_2014_025E", "CP03_2015_025E", "CP03_2016_025E", "CP03_2017_025E"), 
-    region = "metropolitan statistical area/micropolitan statistical area:*",
-    key = cs_key)
-head(acs_comparison)
+# Data Cleaning
 
-#List of counties
-acs_group <- getCensus(name = "acs/acs5",
-vintage = 2017,
-vars = c("NAME", "group(B19013)"),
-region = "county:*",
-key = cs_key)
+We have 129 columns, some of which repeat across years. 
 
-#List of tracts in Michigan 
-df <- getCensus(name = "acs/acs5", vintage = 2017,
-vars = c("B01001_001E", "NAME", "B01002_001E", "B19013_001E"),
-region = "tract:*", regionin = "state:26", key = cs_key )
-head(df)
+```{r Changing variable names}
+
+#Removing empty first column
+flint_acs5_clean <- flint_acs5[,2:129]
+
+#Removing multiple cases of state and municipality ID
+flint_acs5_clean <- flint_acs5_clean %>% select(-matches("state*|county*|tract*|desc*"))
+
+#Adding years
+
+#.1 = 2011, .2=2012.....7=2017
+
+nums <- c(1,2,3,4,5,6,7)
+
+for(col in colnames(flint_acs5_clean)){
+  for(i in nums){
+    colnames(flint_acs5_clean)[colnames(flint_acs5_clean) == col] <- gsub(paste("\\.", nums[i], sep = ""), paste("_201", nums[i], sep = ""), col)
+  }
+}
+
+#THIS IS WHERE I LEFT Off
+#Changing name of 2010 (col 1:13)
+
+colnames(flint_acs5_clean)[1:13] <- paste(colnames(flint_acs5_clean[1:13]), "_2010",sep="")
 
 
+#Adding structure age data
+flint_acs5_clean <- cbind(flint_strage,flint_acs5_clean)
 
 ```
+
+Now we will keep only the census tracts that are inside of Flint.
+
+The census tracts of interest (39, obtained from Census website) are: 000100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900
 
 ```{r}
-#Merging tracts from 2010-2018
-
-
-
 #Keeping only tracts of interest
-tracts <- c(000100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900)
+tracts <- c(100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900)
+
+flint_acs5_clean <- flint_acs5_clean %>% filter(tract %in% tracts)
 ```
 
+# Restructure into tidy data
+
+```{r}
+
+```
+
+
+
+# Data Exploration
+
+* Trends in income over time, by race and gender
+
+* Trends in number of households over time
+
+* Trends in housing values over time, by race
+
+* Number of children under 5
+
+Are there differences in tracts that had lead pipes?
