@@ -1,6 +1,6 @@
 ---
 title: "Real estate values and the Flint water crisis"
-author: "Ilse Paniagua"
+author: "Ilse Paniagua and Zeping Tao"
 date: "9/9/2019"
 output: html_document
 ---
@@ -97,7 +97,7 @@ flint_strage <- getCensus(name = "acs/acs5", vintage = 2010,
 vars = c("NAME","B25034_010E","B25034_009E","B25034_008E","B25034_007E","B25034_006E","B25034_005E","B25034_004E"),
 region = "tract:*", regionin = "state:26+county:049", key = cs_key )
 
-colnames(flint_strage) <- c("state","county","tract","desc","built_1940-1949","built_1950-1959","built_1960-1969","built_1970-1979","built_1980-1989","built_1990-1999","built_2000-2009")
+colnames(flint_strage) <- c("state","county","tract","desc","1940-1949","1950-1959","1960-1969","1970-1979","1980-1989","1990-1999","2000-2009")
 
 glimpse(flint_strage)
 ```
@@ -126,7 +126,7 @@ flint_acs5 <- cbind(flint_acs5,flint_partial)
 
 # Data Cleaning
 
-We have 129 columns, some of which repeat across years. 
+We have 129 columns, some of which repeat across years. This step will help us organize variables for reshaping and will add clarity to variable names.
 
 ```{r Changing variable names}
 
@@ -148,7 +148,6 @@ for(col in colnames(flint_acs5_clean)){
   }
 }
 
-#THIS IS WHERE I LEFT Off
 #Changing name of 2010 (col 1:13)
 
 colnames(flint_acs5_clean)[1:13] <- paste(colnames(flint_acs5_clean[1:13]), "_2010",sep="")
@@ -165,20 +164,80 @@ The census tracts of interest (39, obtained from Census website) are: 000100,001
 
 ```{r}
 #Keeping only tracts of interest
-tracts <- c(100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900)
+tracts <- (c(000100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900))
+
+#Full data
+flint_acs5_clean$tract <- as.numeric(flint_acs5_clean$tract)
 
 flint_acs5_clean <- flint_acs5_clean %>% filter(tract %in% tracts)
+
+#Structure age data
+flint_strage$tract <- as.numeric(flint_strage$tract)
+
+flint_strage <- flint_strage %>% filter(tract %in% tracts)
 ```
 
 # Restructure into tidy data
 
 ```{r}
+#Gathering data
+
+#Full dataset
+flint_acs5_clean <- flint_acs5_clean %>% gather(5:11,key = "built", value = "cases") %>% arrange(.,tract)
+
+#Structure age data
+flint_strage <- flint_strage %>% gather(5:11,key = "built", value = "cases") %>% arrange(.,tract)
+
+#Reordering column order for reshaping
+
+flint_acs5_clean <- flint_acs5_clean  %>% select(noquote(order(colnames(.)))) %>% select(state,county,tract,desc,built,cases,everything())
+
+#Reshaping data columns 7-110
+
+acs_vars <- c("income_black","income_white","f_black","m_black","black","white","m_white","f_white","f_under5","m_under5","fam_hh","hh","homevalue") %>% sort(decreasing=FALSE)
+
+flint_acs5_clean_full <- flint_acs5_clean %>% 
+  reshape(
+  idvar=c("tract","built"),
+  varying=list(c(7:14),c(15:22),c(23:30),c(31:38),c(39:46),c(47:54),c(55:62),   c(63:70),c(71:78),c(79:86),c(87:94),c(95:102),c(103:110)), 
+  v.names=acs_vars, 
+  timevar="year", 
+  times=years, 
+  direction="long") %>% arrange(.,tract)
+
+glimpse(flint_acs5_clean_full)
+```
+
+Now we create a dataset with only one row per tract and year.
+
+```{r}
+#Dataset that doesn't include structure age
+
+flint_acs5_series <- flint_acs5_clean_full %>% select(-built,-cases) %>% unique.data.frame()
+
+glimpse(flint_acs5_series)
 
 ```
 
+We now have three tidy datasets:
 
+1. Housing structure age by tract (273 rows= 39 tracts* 7 structure age)
+2. Demographic variables and housing structure by tract (2,184 rows= 39 tracts* 7 structure age * 8 years)
+3. Demographic variables by tract (312 rows= 39 tracts * 8 years)
 
 # Data Exploration
+
+* Age of housing structures, by tract
+
+```{r}
+#Scatterplot of the number of cases for each structure age category for all tracts. Color according to age category 
+
+flint_strage %>% arrang
+
+ggplot(data=flint_acs5_clean) + geom_point(aes=)
+                                    
+```
+
 
 * Trends in income over time, by race and gender
 
