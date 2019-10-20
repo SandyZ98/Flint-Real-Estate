@@ -1,0 +1,48 @@
+---
+title: "Getting Zillow data"
+author: "Zeping"
+date: "2019年10月19日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+libraries
+```{r}
+library("ZillowR")
+library("jsonlite")
+library('rvest')
+library('XML')
+```
+
+set up the API key
+```{r}
+zwsid <- "X1-ZWz1hetbmyoqa3_13bwv"
+set_zillow_web_service_id('X1-ZWz1hetbmyoqa3_13bwv')
+```
+
+request and check if succeed
+```{r}
+test_addr<-GetSearchResults(address="* Brown St", citystatezip = 'Flint, MI')
+test_addr$message$code ==0
+class(test_addr$response)
+View(test_addr$response)
+```
+6 records for "* Brown St"
+
+Try to parse the XMLNode
+  reference: the document of "XML" package https://cran.r-project.org/web/packages/XML/XML.pdf
+```{r}
+xmllist<-xmlParse(test_addr$response)
+xmlToDataFrame(nodes = getNodeSet(test_addr$response, "//links"), stringsAsFactors = FALSE)
+#success: subset nodes
+xmllist<-xmlToList(test_addr$response)
+#sucess: all, but 
+xmllist[[2]]
+xmllist[[3]]
+pagexml2<-htmlTreeParse(test,encoding="utf-8",useInternalNodes = TRUE,trim=TRUE)
+nds <- xml(test_addr$response, xpath = '//zpid')
+```
+
