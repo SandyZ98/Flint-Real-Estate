@@ -1,7 +1,7 @@
 ---
 title: "Getting Zillow data"
 author: "Zeping"
-date: "2019å¹´10æœˆ19æ—¥"
+date: "2019å¹?10æœ?19æ—?"
 output: html_document
 ---
 
@@ -29,6 +29,7 @@ test_addr<-GetSearchResults(address="* Brown St", citystatezip = 'Flint, MI')
 test_addr$message$code ==0
 class(test_addr$response)
 View(test_addr$response)
+test_addr$response
 ```
 6 records for "* Brown St"
 
@@ -44,5 +45,25 @@ xmllist[[2]]
 xmllist[[3]]
 pagexml2<-htmlTreeParse(test,encoding="utf-8",useInternalNodes = TRUE,trim=TRUE)
 nds <- xml(test_addr$response, xpath = '//zpid')
+```
+
+Try "getChart" to see if we can get historical data
+```{r}
+chart<-GetChart(zpid = 190340363)
+chart_url<-xmlToDataFrame(nodes=getNodeSet(chart$response,"//url"))
+write.csv(chart_url,file='chart url example.csv')
+```
+
+
+GetDeepSearchs
+```{r}
+b<-GetDeepSearchResults(address="* Miller Rd", citystatezip = 'Flint, MI')
+b$response
+```
+
+GetZestmate
+```{r}
+c<-GetZestimate(zpid = 190340363)
+c
 ```
 
