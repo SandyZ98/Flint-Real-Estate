@@ -15,6 +15,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(ZillowR)
 library(censusapi)
 library(tidyverse)
+library(foreign)
+library(XML)
 ```
 
 https://www.zillow.com/howto/api/GetChart.htm
@@ -232,7 +234,7 @@ We now have three tidy datasets:
 ```{r}
 #Scatterplot of the number of cases for each structure age category for all tracts. Color according to age category 
 
-flint_strage %>% arrang
+flint_strage %>% arrange
 
 ggplot(data=flint_acs5_clean) + geom_point(aes=)
                                     
@@ -248,3 +250,26 @@ ggplot(data=flint_acs5_clean) + geom_point(aes=)
 * Number of children under 5
 
 Are there differences in tracts that had lead pipes?
+
+# Gather Zillow data 
+"ZillowR" package provides funtions to call Zillow api to get its property data. However, it only allows specific addresses as input parameter. Therefore, we need to get all the addresses in Flint. Fortunately, TIGER/Line Shapefile provides the information that allows us to make up all the potential addresses in Flint and try them with Zillow api.
+
+First, we load the address ranges from "Address Ranges County-based Relationship File", which contains "Address range identifier"(ARID). Then we load the feature names (street names) from "Feature Names County-based Relationship File", which contains "Linear feature identifier"(LINEARID). Third, we load "Address Range-Feature Name County-based Relationship File" that describe the match between ARID and LINEARID. 
+```{r}
+table_range<-read.dbf("Genesee County Address Range/tl_2019_26049_addr.dbf",as.is = TRUE)
+table_names<-read.dbf("Genesee County Feature Names/tl_2019_26049_featnames.dbf",as.is=TRUE)
+table_relat<-read.dbf("Genesee County Relationship File/tl_2019_26049_addrfn.dbf",as.is=TRUE)
+
+table_ID <- merge(table_range,table_relat,by="ARID")
+table_address <- merge(table_ID,table_names,by="LINEARID")
+
+table_address$FROMHN<-as.numeric(table_address$FROMHN)
+table_address$TOHN<-as.numeric(table_address$TOHN)
+nrow(table_address[is.na(table_address$FROMHN),])
+keep<-c("FULLNAME","FROMHN","TOHN","ZIP")
+table_addr_clean<-na.omit(table_address[keep])
+
+source("Zillow API request loop.R")
+
+```
+
