@@ -23,4 +23,5 @@ for(j in 1:5){
   table_zlw<-rbind(table_zlw,table_zlw_j)
 }
 
+
 class(Result$response)
