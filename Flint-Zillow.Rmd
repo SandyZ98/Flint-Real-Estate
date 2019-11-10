@@ -13,11 +13,16 @@ knitr::opts_chunk$set(echo = TRUE)
 library(ZillowR)
 library(censusapi)
 library(tidyverse)
+<<<<<<< HEAD
 library(ggmap)
 library(factoextra)
 library(lubridate)
 library(corrplot)
 library(magrittr)
+=======
+library(foreign)
+library(XML)
+>>>>>>> d0392df45d33d78d9f0176c437d917abf55607df
 ```
 
 # Gathering Flint Census data (2010-2017)
@@ -55,7 +60,7 @@ ac5_geo <- listCensusMetadata(name = "acs/acs5", vintage=2017,
 From the tables above we obtain the variables of interest:
 
 ```{r}
-myvars <- c("B19001B_001E","B19001A_001E","B01001B_017E","B01001B_002E","B01001B_001E","B01001A_001E","B01001A_002E","B01001A_017E","B01001_027E","B01001_003E","B11016_002E","B11016_001E","B25107_001E")
+myvars <- c("B19001B_001E","B19001A_001E","B01001B_017E","B01001B_002E","B01001B_001E","B01001A_001E","B01001_003E","B01001A_017E","B01001_027E","B01001_003E","B11016_002E","B11016_001E","B25107_001E")
 ```
 
 Totals:
@@ -66,7 +71,7 @@ B01001B_017E: total female (black)
 B01001B_002E: total male (black)
 B01001B_001E: total black
 B01001A_001E: total white
-B01001A_002E: total male (white)
+B01001_003E: total male (white)
 B01001A_017E: total female (white)
 B01001_027E: female under 5 years
 B01001_003E: male under 5 years
@@ -189,7 +194,7 @@ flint_strage <-
   gather(5:11,key = "built", value = "cases") %>%
   arrange(.,tract)
 
-#Creating year variable
+#Reordering column order for reshaping
 
 flint_acs5_clean <- flint_acs5_clean  %>% select(noquote(order(colnames(.)))) %>% select(state,county,tract,desc,built,cases,everything())
 
@@ -256,9 +261,7 @@ Flint has a large proportion of old homes built between 1940-49, followed by hom
 ```{r}
 #Changing year to numeric for time series
 flint_acs5_series$year <-  flint_acs5_series$year %>% as.numeric()
-```
 
-```{r}
 #Adult males and females, by race
 flint_acs5_series %>% 
   gather(6,8:10,15:18,key = "type", value = "population") %>%
@@ -267,8 +270,6 @@ flint_acs5_series %>%
   group_by(year, type) %>% summarise(mean=mean(population)) %>%
   ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=type))
 ```
-Population trends seem steady over time. The white population seems to have increased after 2017. This, combined with rising house prices in 2017, may point to some gentrification.
-
 
 * Trends in income over time, by race and gender
 
@@ -280,25 +281,19 @@ flint_acs5_series %>%
   group_by(year, race) %>%
   summarise(mean=mean(income)) %>%
   ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=race))
-
 ```
 
 * Number of children under 5
 
 ```{r}
-#Children variable
-
 flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% 
   arrange(.,tract) %>% 
   filter(type %in% c("m_under5","f_under5","type","population")) %>% group_by(year, type) %>% 
   summarise(mean=mean(population)) %>% 
   ggplot(aes(x=year, y=mean)) + geom_line(aes(color=type))
-
 ```
 
-The average numer of children per tract declined slightly between 2013 and 2016.
-
-* Trends in housing values over time
+* ACS home values over time
 
 ```{r}
 #Changing year to character for individual box plots by year
@@ -308,11 +303,35 @@ flint_acs5_series %>%
   ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_boxplot()
 ```
 
-Are there differences in tracts that had lead pipes?
 
-# Zillow Data
+# Zillow API call
 
-Loading the data
+"ZillowR" package provides funtions to call Zillow api to get its property data. However, it only allows specific addresses as input parameter. Therefore, we need to get all the addresses in Flint. Fortunately, TIGER/Line Shapefile provides the information that allows us to make up all the potential addresses in Flint and try them with Zillow api.
+
+First, we load the address ranges from "Address Ranges County-based Relationship File", which contains "Address range identifier"(ARID). Then we load the feature names (street names) from "Feature Names County-based Relationship File", which contains "Linear feature identifier"(LINEARID). Third, we load "Address Range-Feature Name County-based Relationship File" that describe the match between ARID and LINEARID.
+
+```{r}
+table_address$FROMHN<-as.numeric(table_address$FROMHN)
+table_address$TOHN<-as.numeric(table_address$TOHN)
+nrow(table_address[is.na(table_address$FROMHN),])
+keep<-c("FULLNAME","FROMHN","TOHN","ZIP")
+table_addr_clean<-na.omit(table_address[keep])
+
+source("Zillow API request loop.R")
+```
+
+
+```{r}
+table_range<-read.dbf("Genesee County Address Range/tl_2019_26049_addr.dbf",as.is = TRUE)
+table_names<-read.dbf("Genesee County Feature Names/tl_2019_26049_featnames.dbf",as.is=TRUE)
+table_relat<-read.dbf("Genesee County Relationship File/tl_2019_26049_addrfn.dbf",as.is=TRUE)
+
+table_ID <- merge(table_range,table_relat,by="ARID")
+table_address <- merge(table_ID,table_names,by="LINEARID")
+```
+
+# Cleaning Zillow Data
+
 ```{r}
 load("/tmp/mozilla_isle0/Zillow data.Rdata")
 ```
@@ -355,7 +374,6 @@ zillow %>%
 
 ```{r}
 #Saving records for analysis
-
 zillow_analysis <- zillow %>% 
   filter(lastSoldYear %in% years | taxAssess_year %in% years)
 
@@ -489,6 +507,5 @@ table_zlw %>%
 ```{r}
 leaflet(merged)
 ```
-
 
 
