@@ -10,19 +10,15 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r include=FALSE}
-#install.packages("ZillowR")
-#install.packages("censusapi")
 library(ZillowR)
 library(censusapi)
 library(tidyverse)
+library(ggmap)
+library(factoextra)
+library(lubridate)
+library(corrplot)
+library(magrittr)
 ```
-
-https://www.zillow.com/howto/api/GetChart.htm
-
-XX days on Zillow
-Price
-Current rates per loan type
-GetZestimate22
 
 # Gathering Flint Census data (2010-2017)
 
@@ -183,10 +179,15 @@ flint_strage <- flint_strage %>% filter(tract %in% tracts)
 #Gathering data
 
 #Full dataset
-flint_acs5_clean <- flint_acs5_clean %>% gather(5:11,key = "built", value = "cases") %>% arrange(.,tract)
+flint_acs5_clean <- flint_acs5_clean %>%
+  gather(5:11,key = "built", value = "cases") %>%
+  arrange(.,tract)
 
 #Structure age data
-flint_strage <- flint_strage %>% gather(5:11,key = "built", value = "cases") %>% arrange(.,tract)
+flint_strage <- 
+  flint_strage %>%
+  gather(5:11,key = "built", value = "cases") %>%
+  arrange(.,tract)
 
 #Creating year variable
 
@@ -199,11 +200,12 @@ acs_vars <- c("income_black","income_white","f_black","m_black","black","white",
 flint_acs5_clean_full <- flint_acs5_clean %>% 
   reshape(
   idvar=c("tract","built"),
-  varying=list(c(7:14),c(15:22),c(23:30),c(31:38),c(39:46),c(47:54),c(55:62),   c(63:70),c(71:78),c(79:86),c(87:94),c(95:102),c(103:110)), 
+  varying=list(c(7:14),c(15:22),c(23:30),c(31:38),c(39:46),c(47:54),c(55:62),   c(63:70),c(71:78),c(79:86),c(87:94),c(95:102),c(103:110)),
   v.names=acs_vars, 
   timevar="year", 
   times=years, 
-  direction="long") %>% arrange(.,tract)
+  direction="long") %>%
+  arrange(.,tract)
 
 glimpse(flint_acs5_clean_full)
 ```
@@ -213,7 +215,9 @@ Now we create a dataset with only one row per tract and year.
 ```{r}
 #Dataset that doesn't include structure age
 
-flint_acs5_series <- flint_acs5_clean_full %>% select(-built,-cases) %>% unique.data.frame()
+flint_acs5_series <- flint_acs5_clean_full %>%
+  select(-built,-cases) %>%
+  unique.data.frame()
 
 glimpse(flint_acs5_series)
 
@@ -234,7 +238,14 @@ Calcualte the total number of houses per tract. Then, calculate what percentage 
 ```{r}
 #Summary table, number of cases in each category
 
-flint_strage %>% group_by(tract) %>% mutate(numhouses=sum(cases)) %>% group_by(built,tract) %>% summarise(mean=cases/numhouses) %>% group_by(built) %>% summarise(proportion=mean(mean)) %>% ggplot(.,aes(built,proportion)) + geom_col()
+flint_strage %>%
+  group_by(tract) %>% 
+  mutate(numhouses=sum(cases)) %>%
+  group_by(built,tract) %>%
+  summarise(mean=cases/numhouses) %>%
+  group_by(built) %>%
+  summarise(proportion=mean(mean)) %>%
+  ggplot(.,aes(built,proportion)) + geom_col()
                                     
 ```
 
@@ -243,16 +254,18 @@ Flint has a large proportion of old homes built between 1940-49, followed by hom
 * Population trends over time
 
 ```{r}
+#Changing year to numeric for time series
 flint_acs5_series$year <-  flint_acs5_series$year %>% as.numeric()
 ```
 
-
 ```{r}
-#Adult males and females, overall
-flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% arrange(.,tract) %>% filter(type %in% c("black","white","type","population")) %>% group_by(year, type) %>% summarise(mean=mean(population)) %>% ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=type))
-
 #Adult males and females, by race
-flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% arrange(.,tract) %>% filter(type %in% c("m_white","f_white","f_black","m_black","type","population")) %>% group_by(year, type) %>% summarise(mean=mean(population)) %>% ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=type))
+flint_acs5_series %>% 
+  gather(6,8:10,15:18,key = "type", value = "population") %>%
+  arrange(.,tract) %>% 
+  filter(type %in% c("m_white","f_white","f_black","m_black","type","population")) %>%
+  group_by(year, type) %>% summarise(mean=mean(population)) %>%
+  ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=type))
 ```
 Population trends seem steady over time. The white population seems to have increased after 2017. This, combined with rising house prices in 2017, may point to some gentrification.
 
@@ -261,7 +274,12 @@ Population trends seem steady over time. The white population seems to have incr
 
 ```{r}
 #Income variable
-flint_acs5_series %>% gather(13:14,key = "race", value = "income") %>% arrange(.,tract) %>% group_by(year, race) %>% summarise(mean=mean(income)) %>% ggplot(aes(x=year, y=mean)) + geom_point(aes(fill=race))
+flint_acs5_series %>% 
+  gather(13:14,key = "race", value = "income") %>%
+  arrange(.,tract) %>%
+  group_by(year, race) %>%
+  summarise(mean=mean(income)) %>%
+  ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=race))
 
 ```
 
@@ -270,7 +288,11 @@ flint_acs5_series %>% gather(13:14,key = "race", value = "income") %>% arrange(.
 ```{r}
 #Children variable
 
-flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% arrange(.,tract) %>% filter(type %in% c("m_under5","f_under5","type","population")) %>% group_by(year, type) %>% summarise(mean=mean(population)) %>% ggplot(aes(x=year, y=mean)) + geom_line(aes(color=type))
+flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% 
+  arrange(.,tract) %>% 
+  filter(type %in% c("m_under5","f_under5","type","population")) %>% group_by(year, type) %>% 
+  summarise(mean=mean(population)) %>% 
+  ggplot(aes(x=year, y=mean)) + geom_line(aes(color=type))
 
 ```
 
@@ -279,11 +301,194 @@ The average numer of children per tract declined slightly between 2013 and 2016.
 * Trends in housing values over time
 
 ```{r}
-#Housing values over time
-
+#Changing year to character for individual box plots by year
 flint_acs5_series$year <- flint_acs5_series$year %>% as.character()
 
-flint_acs5_series %>% ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_boxplot()
+flint_acs5_series %>% 
+  ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_boxplot()
 ```
 
 Are there differences in tracts that had lead pipes?
+
+# Zillow Data
+
+Loading the data
+```{r}
+load("/tmp/mozilla_isle0/Zillow data.Rdata")
+```
+
+Some data cleaning steps to select only unique records in the dataset, covert long and lat to numeric, and convert dates from character to date format.
+```{r}
+#Keeping unique records of the dat
+zillow <- unique.data.frame(table_zlw) 
+
+#Changing longitude and latitude as numeric.
+table_zlw$lat %<>% as.numeric()
+table_zlw$long %<>% as.numeric()
+
+#Extract year from last sold date
+
+zillow$lastSoldYear <- 
+  zillow$lastSoldDate %>%
+  str_extract_all("\\d{4}$") %>% 
+  as.character()
+
+```
+We will keep records if:
+1) Their most recent tax assessment is between 2010 and 2017 (use taxAssessment price)
+2) Their last sale date is between 2010 and 2017 (use lastSalePrice)
+
+When there is both tax assessment and house sales for the same property in different years, both will be used for analysis.
+
+Checking to see how many records we have per year
+```{r}
+years
+
+zillow %>% 
+  filter(lastSoldYear %in% years | taxAssess_year %in% years) %>%
+  group_by(lastSoldYear)%>% 
+  summarise(n(), mean(na.omit(taxAssessment)),
+  mean(na.omit(zestimate)))
+#70 records
+
+```
+
+```{r}
+#Saving records for analysis
+
+zillow_analysis <- zillow %>% 
+  filter(lastSoldYear %in% years | taxAssess_year %in% years)
+
+```
+
+
+# Research question 1: How have home prices changed over time?
+
+```{r}
+#Tax assessment records
+#Boxplot
+zillow_analysis %>% 
+  ggplot(., aes(x=taxAssess_year, y=taxAssessment)) + geom_point() + geom_boxplot()
+
+#Line graph
+zillow_analysis %>% 
+  mutate(year = as.numeric(taxAssess_year)) %>%
+  ggplot(., aes(x=year, y=taxAssessment)) + geom_line()
+
+#Home sale records
+#Boxplot
+zillow_analysis %>% 
+  ggplot(., aes(x=lastSoldYear, y=lastSoldPrice)) + geom_point() + geom_boxplot()
+
+#Line graph
+zillow_analysis %>% 
+  mutate(year = as.numeric(lastSoldYear)) %>%
+  ggplot(., aes(x=year, y=taxAssessment)) + geom_line()
+```
+
+
+# Research question 2: Do Zillow and ACS prices match?
+
+Linking Zillow addresses to census tracts based on lat and long.
+```{r}
+zillow_analysis$geo <- apply(zillow_analysis, 1 , function(row) call_geolocator_latlon(row['lat'], row['long'])) #geolocator will be used for leaflet mapping later
+
+zillow_analysis$tract <- zillow_analysis$geo %>% 
+  substr(8,11) %>% #subsetting string
+  as.numeric()
+```
+
+Joining Zillow and ACS data
+```{r}
+#Inner join Zillow and ACS data
+#Filter merged data just to records where there was a tax assessment or home sale
+
+merged <- 
+  inner_join(zillow_analysis, flint_acs5_series, by="tract") %>%
+  filter(year==taxAssess_year | year==lastSoldYear)
+
+#Which Zillow addresses are not on the ACS tract list?
+anti_join(zillow_analysis, flint_acs5_series, by="tract")
+
+```
+
+Creating categories for home values, by groups of 10k.
+
+```{r}
+#Home value categorical variable
+homecats <- c(-Inf,10000,20000,30000,40000,50000,60000,70000,80000, Inf)
+
+#ACS homevalue variable
+merged %<>%
+  mutate(homecat = cut(homevalue, breaks=homecats,labels=c("0-10","11-20","21-30","31-40","41-50","51-60","61-70","71-80","80andabove")))
+
+#Zillow tax assessment variable
+merged %<>%
+  mutate(taxcat = cut(taxAssessment, breaks=homecats,labels=c("0-10","11-20","21-30","31-40","41-50","51-60","61-70","71-80","80andabove")))
+
+#Zillow home sales variable
+merged %<>%
+  mutate(salevaluecat = cut(lastSoldPrice, breaks=homecats,labels=c("0-10","11-20","21-30","31-40","41-50","51-60","61-70","71-80","80andabove")))
+```
+
+
+Do ACS category and Zillow categories match, on average by census tract?
+
+```{r}
+#Match between tax assessment and ACS
+merged %<>%
+  mutate(match_tax = case_when(
+  homecat==taxcat & year==taxAssess_year  ~ 1,
+  homecat!=taxcat & year==taxAssess_year ~ 0))
+
+#Last home sale
+merged %<>%
+  mutate(match_sale = case_when(
+    homecat==salevaluecat & year==lastSoldYear  ~ 1,
+    homecat!=salevaluecat & year==lastSoldYear ~ 0))
+```
+
+Summary table for average matches by census tract and number of records for each comparison.
+
+```{r}
+#Matches by tract
+merged %>% 
+  group_by(tract) %>%
+  summarise(mean_tax = mean(na.omit(match_tax)),
+            mean_sale = mean(na.omit(match_sale)),
+            count_tax = sum(!is.na(match_tax)),
+            count_sale = sum(!is.na(match_sale)))
+```
+
+What is the average discrepancy between reported values and administrative records?
+
+```{r}
+
+```
+
+
+
+# Research question 3: Change in home values in neighborhoods with lead tracts
+
+# Mapping census tracts
+
+We map the data to see if we need more addresses per census tract.
+
+```{r}
+flint_map <- map_data("county", region = "michigan")
+
+flint_geo <- tracts(state = "MI", county = "Genesee")
+
+head(flint_map)
+
+table_zlw %>%
+  qmplot(long, lat, data = ., maptype = "toner-lite", size = I(0.75), alpha = I(0.75))
+```
+
+
+```{r}
+leaflet(merged)
+```
+
+
+
