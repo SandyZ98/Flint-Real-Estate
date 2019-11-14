@@ -61,7 +61,7 @@ ac5_geo <- listCensusMetadata(name = "acs/acs5", vintage=2017,
 From the tables above we obtain the variables of interest:
 
 ```{r}
-myvars <- c("B19001B_001E","B19001A_001E","B01001B_017E","B01001B_002E","B01001B_001E","B01001A_001E","B01001_003E","B01001A_017E","B01001_027E","B01001_003E","B11016_002E","B11016_001E","B25107_001E")
+myvars <- c("B19001B_001E","B19001A_001E","B01001B_017E","B01001B_002E","B01001B_001E","B01001A_001E","B01001A_002E","B01001A_017E","B01001_027E","B01001_003E","B11016_002E","B11016_001E","B25107_001E")
 ```
 
 Totals:
@@ -72,7 +72,7 @@ B01001B_017E: total female (black)
 B01001B_002E: total male (black)
 B01001B_001E: total black
 B01001A_001E: total white
-B01001_003E: total male (white)
+B01001A_002E: total male (white)
 B01001A_017E: total female (white)
 B01001_027E: female under 5 years
 B01001_003E: male under 5 years
@@ -190,7 +190,7 @@ flint_acs5_clean <- flint_acs5_clean %>% gather(5:11,key = "built", value = "cas
 #Structure age data
 flint_strage <- flint_strage %>% gather(5:11,key = "built", value = "cases") %>% arrange(.,tract)
 
-#Reordering column order for reshaping
+#Creating year variable
 
 flint_acs5_clean <- flint_acs5_clean  %>% select(noquote(order(colnames(.)))) %>% select(state,county,tract,desc,built,cases,everything())
 
@@ -231,25 +231,73 @@ We now have three tidy datasets:
 
 * Age of housing structures, by tract
 
-```{r}
-#Scatterplot of the number of cases for each structure age category for all tracts. Color according to age category 
+Calcualte the total number of houses per tract. Then, calculate what percentage belong to each category, per tract. Aggregate the results in a bar chart for each age group.
 
+<<<<<<< HEAD
 flint_strage %>% arrange
+=======
+```{r}
+#Summary table, number of cases in each category
+>>>>>>> 730d0cfd723723d5bba365e6adfa932a760a6036
 
-ggplot(data=flint_acs5_clean) + geom_point(aes=)
+flint_strage %>% group_by(tract) %>% mutate(numhouses=sum(cases)) %>% group_by(built,tract) %>% summarise(mean=cases/numhouses) %>% group_by(built) %>% summarise(proportion=mean(mean)) %>% ggplot(.,aes(built,proportion)) + geom_col()
                                     
 ```
+
+Flint has a large proportion of old homes built between 1940-49, followed by homes built between 1960-69.
+
+* Population trends over time
+
+```{r}
+flint_acs5_series$year <-  flint_acs5_series$year %>% as.numeric()
+```
+
+
+```{r}
+#Adult males and females, overall
+flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% arrange(.,tract) %>% filter(type %in% c("black","white","type","population")) %>% group_by(year, type) %>% summarise(mean=mean(population)) %>% ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=type))
+
+#Adult males and females, by race
+flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% arrange(.,tract) %>% filter(type %in% c("m_white","f_white","f_black","m_black","type","population")) %>% group_by(year, type) %>% summarise(mean=mean(population)) %>% ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=type))
+```
+Population trends seem steady over time. The white population seems to have increased after 2017. This, combined with rising house prices in 2017, may point to some gentrification.
 
 
 * Trends in income over time, by race and gender
 
-* Trends in number of households over time
+```{r}
+#Income variable
+flint_acs5_series %>% gather(13:14,key = "race", value = "income") %>% arrange(.,tract) %>% group_by(year, race) %>% summarise(mean=mean(income)) %>% ggplot(aes(x=year, y=mean)) + geom_point(aes(fill=race))
 
-* Trends in housing values over time, by race
+```
 
 * Number of children under 5
 
+<<<<<<< HEAD
 Are there differences in tracts that had lead pipes?
+
+=======
+```{r}
+#Children variable
+
+flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% arrange(.,tract) %>% filter(type %in% c("m_under5","f_under5","type","population")) %>% group_by(year, type) %>% summarise(mean=mean(population)) %>% ggplot(aes(x=year, y=mean)) + geom_line(aes(color=type))
+
+```
+
+The average numer of children per tract declined slightly between 2013 and 2016.
+
+* Trends in housing values over time
+
+```{r}
+#Housing values over time
+
+flint_acs5_series$year <- flint_acs5_series$year %>% as.character()
+
+flint_acs5_series %>% ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_boxplot()
+```
+
+Are there differences in tracts that had lead pipes?
+>>>>>>> 730d0cfd723723d5bba365e6adfa932a760a6036
 
 # Gather Zillow data 
 "ZillowR" package provides funtions to call Zillow api to get its property data. However, it only allows specific addresses as input parameter. Therefore, we need to get all the addresses in Flint. Fortunately, TIGER/Line Shapefile provides the information that allows us to make up all the potential addresses in Flint and try them with Zillow api.
@@ -260,16 +308,22 @@ table_range<-read.dbf("Genesee County Address Range/tl_2019_26049_addr.dbf",as.i
 table_names<-read.dbf("Genesee County Feature Names/tl_2019_26049_featnames.dbf",as.is=TRUE)
 table_relat<-read.dbf("Genesee County Relationship File/tl_2019_26049_addrfn.dbf",as.is=TRUE)
 
+length(unique(table_names$LINEARID))
+nrow(unique(table_names))
+length(unique(table_range$ARID))
+
 table_ID <- merge(table_range,table_relat,by="ARID")
-table_address <- merge(table_ID,table_names,by="LINEARID")
+keep<-c("ARID","LINEARID","FROMHN","TOHN","ZIP")
+table_ID <-na.omit(table_ID[keep])
+table_address <- merge(table_ID,unique(table_names[c("FULLNAME","LINEARID")]),by="LINEARID")
 
 table_address$FROMHN<-as.numeric(table_address$FROMHN)
 table_address$TOHN<-as.numeric(table_address$TOHN)
 nrow(table_address[is.na(table_address$FROMHN),])
-keep<-c("FULLNAME","FROMHN","TOHN","ZIP")
-table_addr_clean<-na.omit(table_address[keep])
+keep2<-c("FULLNAME","FROMHN","TOHN","ZIP")
+table_addr_clean<-na.omit(unique(table_address[keep2]))
 
+saveRDS(table_addr_clean,"Address Frame.RData")
 source("Zillow API request loop.R")
 
 ```
-
