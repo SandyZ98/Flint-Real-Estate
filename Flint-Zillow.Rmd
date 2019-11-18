@@ -241,12 +241,6 @@ Calcualte the total number of houses per tract. Then, calculate what percentage 
 ```{r}
 #Summary table, number of cases in each category
 
-flint_strage %>% group_by(tract) %>% mutate(numhouses=sum(cases)) %>% group_by(built,tract) %>% summarise(mean=cases/numhouses) %>% group_by(built) %>% summarise(proportion=mean(mean)) %>% ggplot(.,aes(built,proportion)) + geom_col()
-```
-
-```{r}
-#Summary table, number of cases in each category
-
 flint_strage %>%
   group_by(tract) %>% 
   mutate(numhouses=sum(cases)) %>%
@@ -266,14 +260,6 @@ Flint has a large proportion of old homes built between 1940-49, followed by hom
 flint_acs5_series$year <-  flint_acs5_series$year %>% as.numeric()
 ```
 
-
-```{r}
-#Adult males and females, overall
-flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% arrange(.,tract) %>% filter(type %in% c("black","white","type","population")) %>% group_by(year, type) %>% summarise(mean=mean(population)) %>% ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=type))
-
-#Adult males and females, by race
-flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% arrange(.,tract) %>% filter(type %in% c("m_white","f_white","f_black","m_black","type","population")) %>% group_by(year, type) %>% summarise(mean=mean(population)) %>% ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=type))
-```
 Population trends seem steady over time. The white population seems to have increased after 2017. This, combined with rising house prices in 2017, may point to some gentrification.
 
 
@@ -567,6 +553,8 @@ merged <-
 anti_join(zillow_analysis, flint_acs5_series, by="tract")
 
 ```
+
+We have 812 records that are in our years of interest and could be matched to a Flint census tract.
 
 Creating categories for home values, by groups of 10k.
 
