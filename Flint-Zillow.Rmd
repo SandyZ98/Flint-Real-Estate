@@ -20,6 +20,7 @@ library(corrplot)
 library(magrittr)
 library(foreign)
 library(XML)
+library(tigris)
 ```
 
 # Gathering Flint Census data (2010-2017)
@@ -484,12 +485,12 @@ zillow <-readRDS("Zillow data with distinct ZPID.Rdata")
 
 Some data cleaning steps to select only unique records in the dataset, covert long and lat to numeric, and convert dates from character to date format.
 ```{r}
-#Keeping unique records of the dat
-zillow <- unique.data.frame(table_zlw) 
+#Keeping unique records of the df
+zillow <- zillow[!duplicated(zillow[,c("ZPID")]),]
 
 #Changing longitude and latitude as numeric.
-table_zlw$lat %<>% as.numeric()
-table_zlw$long %<>% as.numeric()
+zillow$lat %<>% as.numeric()
+zillow$long %<>% as.numeric()
 
 #Extract year from last sold date
 
@@ -505,27 +506,17 @@ We will keep records if:
 
 When there is both tax assessment and house sales for the same property in different years, both will be used for analysis.
 
-Checking to see how many records we have per year
-```{r}
-years
-
-zillow %>% 
-  filter(lastSoldYear %in% years | taxAssess_year %in% years) %>%
-  group_by(lastSoldYear)%>% 
-  summarise(n(), mean(na.omit(taxAssessment)),
-  mean(na.omit(zestimate)))
-#70 records
-
-```
-
 
 ```{r}
 #Saving records for analysis
+years <- c("2010","2011","2012","2013","2014","2015","2016","2017")
+
 zillow_analysis <- zillow %>% 
   filter(lastSoldYear %in% years | taxAssess_year %in% years)
 
 ```
 
+We have 2,066 observations.
 
 # Research question 1: How have home prices changed over time?
 
