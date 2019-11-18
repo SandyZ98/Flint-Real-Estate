@@ -13,16 +13,13 @@ knitr::opts_chunk$set(echo = TRUE)
 library(ZillowR)
 library(censusapi)
 library(tidyverse)
-<<<<<<< HEAD
 library(ggmap)
 library(factoextra)
 library(lubridate)
 library(corrplot)
 library(magrittr)
-=======
 library(foreign)
 library(XML)
->>>>>>> d0392df45d33d78d9f0176c437d917abf55607df
 ```
 
 # Gathering Flint Census data (2010-2017)
@@ -239,17 +236,12 @@ We now have three tidy datasets:
 * Age of housing structures, by tract
 
 Calcualte the total number of houses per tract. Then, calculate what percentage belong to each category, per tract. Aggregate the results in a bar chart for each age group.
-<<<<<<< HEAD
 
-<<<<<<< HEAD
-flint_strage %>% arrange
-=======
 ```{r}
 #Summary table, number of cases in each category
->>>>>>> 730d0cfd723723d5bba365e6adfa932a760a6036
 
 flint_strage %>% group_by(tract) %>% mutate(numhouses=sum(cases)) %>% group_by(built,tract) %>% summarise(mean=cases/numhouses) %>% group_by(built) %>% summarise(proportion=mean(mean)) %>% ggplot(.,aes(built,proportion)) + geom_col()
-=======
+```
 
 ```{r}
 #Summary table, number of cases in each category
@@ -262,12 +254,10 @@ flint_strage %>%
   group_by(built) %>%
   summarise(proportion=mean(mean)) %>%
   ggplot(.,aes(built,proportion)) + geom_col()
->>>>>>> 5e0c636df6220c5f4385e2aa2d9e3fc7d92909b5
                                     
 ```
 
 Flint has a large proportion of old homes built between 1940-49, followed by homes built between 1960-69.
-<<<<<<< HEAD
 
 * Population trends over time
 
@@ -285,8 +275,6 @@ flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>
 ```
 Population trends seem steady over time. The white population seems to have increased after 2017. This, combined with rising house prices in 2017, may point to some gentrification.
 
-=======
->>>>>>> 5e0c636df6220c5f4385e2aa2d9e3fc7d92909b5
 
 * Population trends over time
 
@@ -303,14 +291,6 @@ flint_acs5_series %>%
   ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=type))
 ```
 
-<<<<<<< HEAD
-```{r}
-#Income variable
-flint_acs5_series %>% gather(13:14,key = "race", value = "income") %>% arrange(.,tract) %>% group_by(year, race) %>% summarise(mean=mean(income)) %>% ggplot(aes(x=year, y=mean)) + geom_point(aes(fill=race))
-
-=======
-* Trends in income over time, by race and gender
-
 ```{r}
 #Income variable
 flint_acs5_series %>% 
@@ -319,16 +299,10 @@ flint_acs5_series %>%
   group_by(year, race) %>%
   summarise(mean=mean(income)) %>%
   ggplot(aes(x=year, y=mean)) + geom_area(aes(fill=race))
->>>>>>> 5e0c636df6220c5f4385e2aa2d9e3fc7d92909b5
 ```
 
 * Number of children under 5
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-Are there differences in tracts that had lead pipes?
-
-=======
 ```{r}
 #Children variable
 
@@ -348,12 +322,9 @@ flint_acs5_series$year <- flint_acs5_series$year %>% as.character()
 flint_acs5_series %>% ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_boxplot()
 ```
 
-Are there differences in tracts that had lead pipes?
->>>>>>> 730d0cfd723723d5bba365e6adfa932a760a6036
 
 # Gather Zillow data 
 "ZillowR" package provides funtions to call Zillow api to get its property data. However, it only allows specific addresses as input parameter. Therefore, we need to get all the addresses in Flint. Fortunately, TIGER/Line Shapefile provides the information that allows us to make up all the potential addresses in Flint and try them with Zillow api.
-=======
 ```{r}
 flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% 
   arrange(.,tract) %>% 
@@ -367,9 +338,6 @@ flint_acs5_series$year <- flint_acs5_series$year %>% as.character()
 flint_acs5_series %>% 
   ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_boxplot()
 ```
-
-* ACS home values over time
->>>>>>> 5e0c636df6220c5f4385e2aa2d9e3fc7d92909b5
 
 
 # Zillow API call
@@ -513,6 +481,7 @@ saveRDS(table_zlw_nondup,"Zillow data with distinct ZPID.Rdata")
 zillow <-readRDS("Zillow data with distinct ZPID.Rdata")
 ```
 
+
 Some data cleaning steps to select only unique records in the dataset, covert long and lat to numeric, and convert dates from character to date format.
 ```{r}
 #Keeping unique records of the dat
@@ -547,10 +516,8 @@ zillow %>%
   mean(na.omit(zestimate)))
 #70 records
 
-<<<<<<< HEAD
 ```
-=======
-```
+
 
 ```{r}
 #Saving records for analysis
@@ -687,6 +654,3 @@ table_zlw %>%
 ```{r}
 leaflet(merged)
 ```
-
-
->>>>>>> 5e0c636df6220c5f4385e2aa2d9e3fc7d92909b5
