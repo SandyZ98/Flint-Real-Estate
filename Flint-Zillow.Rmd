@@ -607,6 +607,11 @@ merged %>%
 What is the average discrepancy between reported values and administrative records?
 
 ```{r}
+merged %>% 
+  mutate(match_diff_tax = homevalue - taxAssessment) %>%
+  group_by(tract) %>%
+  summarise(mean(match_diff_tax))
+  select(match_diff_tax, homevalue, taxAssessment)
 
 ```
 
@@ -625,7 +630,7 @@ flint_geo <- tracts(state = "MI", county = "Genesee")
 
 head(flint_map)
 
-table_zlw %>%
+merged %>%
   qmplot(long, lat, data = ., maptype = "toner-lite", size = I(0.75), alpha = I(0.75))
 ```
 
