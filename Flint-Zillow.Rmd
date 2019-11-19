@@ -592,6 +592,19 @@ merged %<>%
     homecat!=salevaluecat & year==lastSoldYear ~ 0))
 ```
 
+
+What is the average discrepancy between reported values and administrative records?
+
+```{r}
+merged %>% 
+  mutate(match_diff_tax = homevalue - taxAssessment, match_diff_sale = homevalue - lastSoldPrice) %>%
+  group_by(tract) %>%
+  summarise(mean(match_diff_tax, na.rm=TRUE), mean(match_diff_sale, na.rm=TRUE))
+
+```
+The average difference between ACS home values and Zillow tax assessments and home sale prices is upwards of 20K to 50k!
+
+
 Summary table for average matches by census tract and number of records for each comparison.
 
 ```{r}
@@ -604,17 +617,77 @@ merged %>%
             count_sale = sum(!is.na(match_sale)))
 ```
 
-What is the average discrepancy between reported values and administrative records?
+Because we do not have enough records per tract to conduct a robust analysis, we will cluster observations using both Zillow and Census data and make comparisons across clusters instead of census tracts.
+
+
+# Creating clusters
+
+We will cluster variables based on:
+bedrooms, bathrooms, finishedsqFt, rentzestimate, lat, long, black, white, fam_hh.
+
+We need to rescale variables before the analysis.
 
 ```{r}
-merged %>% 
-  mutate(match_diff_tax = homevalue - taxAssessment) %>%
-  group_by(tract) %>%
-  summarise(mean(match_diff_tax))
-  select(match_diff_tax, homevalue, taxAssessment)
-
+clusters <-
+  merged %>%
+  select(bedrooms, bathrooms, finishedSqFt, rentzestimate, lat, long, black, white, fam_hh) %>%
+  mutate_all(scale)
 ```
 
+Next, create the distance matrix of the cleaned data.
+
+```{r}
+hclust_d <- dist(clusters)
+as.matrix(hclust_d)[1:10, 1:10]
+```
+
+This distance matrix can be used to cluster counties, e.g. using the ward method.
+
+```{r}
+#Using the Ward method
+hc_ward <- hclust(hclust_d, method = "ward.D2")
+```
+
+Ploting the dendogram to find a reasonable number of clusters.
+
+```{r}
+#A solution with seven clusters seem to be a good fit
+
+plot(hc_ward, main = "Ward", xlab = "", sub = "")
+
+rect.hclust(hc_ward, 
+            k = 5, 
+            border = "red")
+```
+We will select a small number of clusters (5) in order to be able to aggregate records more fully.
+
+```{r}
+#Number of cases per cluser
+merged %>% mutate(cluster = cutree(hc_ward, 5)) %>% group_by(cluster) %>% summarise(n())
+
+#Adding cluster column
+merged %<>% mutate(cluster = cutree(hc_ward, 5))
+```
+
+Clusters 9 and 10 contain observations that appear to be outliers (5 obs. total). These will not be used for the analysis.
+
+Now we again calculate the differences in ACS home values and administrative records.
+
+```{r}
+#Matches by cluster
+merged %>%
+  mutate(match_diff_tax = homevalue - taxAssessment, match_diff_sale = homevalue - lastSoldPrice) %>%
+  filter(!cluster %in% c(5)) %>%
+  group_by(cluster) %>%
+  summarise("Matches by Tax (%)" = mean((match_tax), na.rm=TRUE),
+            "Matches by Sale Price (%)" = mean((match_sale), na.rm=TRUE),
+            "Number of tax records" = sum(!is.na(match_tax)),
+            "Number of sale records" = sum(!is.na(match_sale)),
+            "Average difference - Tax" = mean(match_diff_tax, na.rm=TRUE),
+            "Average difference - Sales" = mean(match_diff_sale, na.rm=TRUE))
+```
+
+We still observe very large differences between randomly sampled addresses that returned a Zillow record and ACS data!
 
 
 # Research question 3: Change in home values in neighborhoods with lead tracts
