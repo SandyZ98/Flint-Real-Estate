@@ -504,33 +504,6 @@ zillow_analysis <- zillow %>%
 
 We have 2,066 observations.
 
-# Research question 1: How have home prices changed over time?
-
-```{r}
-#Tax assessment records
-#Boxplot
-zillow_analysis %>% 
-  ggplot(., aes(x=taxAssess_year, y=taxAssessment)) + geom_point() + geom_boxplot()
-
-#Line graph
-zillow_analysis %>% 
-  mutate(year = as.numeric(taxAssess_year)) %>%
-  ggplot(., aes(x=year, y=taxAssessment)) + geom_line()
-
-#Home sale records
-#Boxplot
-zillow_analysis %>% 
-  ggplot(., aes(x=lastSoldYear, y=lastSoldPrice)) + geom_point() + geom_boxplot()
-
-#Line graph
-zillow_analysis %>% 
-  mutate(year = as.numeric(lastSoldYear)) %>%
-  ggplot(., aes(x=year, y=taxAssessment)) + geom_line()
-```
-
-
-# Research question 2: Do Zillow and ACS prices match?
-
 Linking Zillow addresses to census tracts based on lat and long.
 ```{r}
 zillow_analysis$geo <- apply(zillow_analysis, 1 , function(row) call_geolocator_latlon(row['lat'], row['long'])) #geolocator will be used for leaflet mapping later
@@ -575,6 +548,32 @@ merged %<>%
   mutate(salevaluecat = cut(lastSoldPrice, breaks=homecats,labels=c("0-10","11-20","21-30","31-40","41-50","51-60","61-70","71-80","80andabove")))
 ```
 
+# Research question 1: How have home prices changed over time?
+
+We chart changes over time for all three categories (ACS value, tax value, home sale value) across all census tracts.
+
+```{r}
+
+merged %>%
+  select(year, taxAssessment, lastSoldPrice, homevalue, zestimate) %>%
+  gather(key = type, value = value, 2:5) %>%
+  group_by(year, type) %>%
+  summarise(median = median(value, na.rm = TRUE)) %>%
+  ggplot(aes(x=year, y=median)) +
+  geom_line(aes(color=type, group=type), size=2) +
+  labs(title="Home values over time",
+       x= "Year",
+       y="Median home value",
+       color="Type",
+       caption="Source: ACS and Zillow") +
+  theme_light()
+  
+
+
+```
+
+
+# Research question 2: Do Zillow and ACS prices match?
 
 Do ACS category and Zillow categories match, on average by census tract?
 
@@ -593,16 +592,16 @@ merged %<>%
 ```
 
 
-What is the average discrepancy between reported values and administrative records?
+What is the average discrepancy between reported values and administrative records? We also include Zillow zestimates as a comparison (although it is unclear for which year these estimates were generated).
 
 ```{r}
 merged %>% 
-  mutate(match_diff_tax = homevalue - taxAssessment, match_diff_sale = homevalue - lastSoldPrice) %>%
+  mutate(match_diff_tax = homevalue - taxAssessment, match_diff_sale = homevalue - lastSoldPrice, zest_diff = homevalue - zestimate) %>%
   group_by(tract) %>%
-  summarise(mean(match_diff_tax, na.rm=TRUE), mean(match_diff_sale, na.rm=TRUE))
+  summarise(mean(match_diff_tax, na.rm=TRUE), mean(match_diff_sale, na.rm=TRUE), mean(zest_diff, na.rm=TRUE))
 
 ```
-The average difference between ACS home values and Zillow tax assessments and home sale prices is upwards of 20K to 50k!
+The average difference between ACS home values and Zillow tax assessments and home sale prices is upwards of 20K to 50k! It is not clear that Zestimates are more accurate. The difference is higher or lower than administrative records depending on the tract.
 
 
 Summary table for average matches by census tract and number of records for each comparison.
