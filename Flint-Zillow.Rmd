@@ -21,12 +21,14 @@ library(magrittr)
 library(foreign)
 library(XML)
 library(tigris)
+library(leaflet)
+library(sf)
 ```
 
 # Gathering Flint Census data (2010-2017)
 
 ```{r}
-cs_key <- "99821ff046ee033b7b76cbae65f421bf9136217f"
+cs_key <- "MY KEY"
 ```
 
 References:
@@ -293,7 +295,14 @@ flint_acs5_series %>%
 ```{r}
 #Children variable
 
-flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% arrange(.,tract) %>% filter(type %in% c("m_under5","f_under5","type","population")) %>% group_by(year, type) %>% summarise(mean=mean(population)) %>% ggplot(aes(x=year, y=mean)) + geom_line(aes(color=type))
+flint_acs5_series %>%
+  gather(6,8:10,15:18,key = "type", value = "population") %>%
+  arrange(.,tract) %>%
+  filter(type %in% c("m_under5","f_under5","type","population")) %>%
+  group_by(year, type) %>%
+  summarise(mean=mean(population)) %>%
+  ggplot(aes(x=year, y=mean)) +
+  geom_line(aes(color=type))
 
 ```
 
@@ -315,7 +324,8 @@ flint_acs5_series %>% ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_
 ```{r}
 flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% 
   arrange(.,tract) %>% 
-  filter(type %in% c("m_under5","f_under5","type","population")) %>% group_by(year, type) %>% 
+  filter(type %in% c("m_under5","f_under5","type","population")) %>%
+  group_by(year, type) %>% 
   summarise(mean=mean(population)) %>% 
   ggplot(aes(x=year, y=mean)) + geom_line(aes(color=type))
 
@@ -323,7 +333,9 @@ flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>
 flint_acs5_series$year <- flint_acs5_series$year %>% as.character()
 
 flint_acs5_series %>% 
-  ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_boxplot()
+  ggplot(., aes(x=year, y=homevalue)) +
+  geom_point() +
+  geom_boxplot()
 ```
 
 
@@ -550,7 +562,7 @@ merged %<>%
 
 # Research question 1: How have home prices changed over time?
 
-We chart changes over time for all three categories (ACS value, tax value, home sale value) across all census tracts.
+We chart changes over time for all three categories (ACS value, tax value, home sale value) across all census tracts. We use the median (not mean) because of potential outliers in the data.
 
 ```{r}
 
@@ -561,7 +573,7 @@ merged %>%
   summarise(median = median(value, na.rm = TRUE)) %>%
   ggplot(aes(x=year, y=median)) +
   geom_line(aes(color=type, group=type), size=2) +
-  labs(title="Home values over time",
+  labs(title="Flint: Home values over time",
        x= "Year",
        y="Median home value",
        color="Type",
@@ -691,22 +703,56 @@ We still observe very large differences between randomly sampled addresses that 
 
 # Research question 3: Change in home values in neighborhoods with lead tracts
 
+References:
+https://rpubs.com/ben_bellman/sf_tigris
+
+
 # Mapping census tracts
 
-We map the data to see if we need more addresses per census tract.
+Getting census tract files from tigris package and changing to a simpler sf format.
 
 ```{r}
-flint_map <- map_data("county", region = "michigan")
-
 flint_geo <- tracts(state = "MI", county = "Genesee")
 
-head(flint_map)
+flint_geo %<>%st_as_sf(ri)
+```
 
-merged %>%
-  qmplot(long, lat, data = ., maptype = "toner-lite", size = I(0.75), alpha = I(0.75))
+Keep only polygons that are in Flint.
+
+```{r}
+
+flint_geo %>%
+  filter(GEOID %in% unique(merged$geo))
+```
+
+Merging geometry with ACS/Zillow dataset.
+
+```{r}
+
+```
+
+
+Now visualizations!
+```{r}
+st_geometry(flint_geo) %>% plot()
+
+ggplot() +
+  geom_sf(data = flint_geo, aes(fill = events), size = 0.5) +
+  geom_sf(data = samp, col = "red", shape = 3)
+
 ```
 
 
 ```{r}
-leaflet(merged)
+leaflet() %>%
+  addTiles() %>%
+  addCircles(merged, lng= merged$long, lat = merged$lat) %>%
+  addPolygons(flint_geo)
 ```
+
+```{r}
+leaflet(flint_geo) %>%
+  addTiles() %>%
+  addPolygons()
+```
+
