@@ -25,6 +25,14 @@ library(leaflet)
 library(sf)
 ```
 
+```{r, include=FALSE}
+#Reading data
+
+load("Flint-Zillow.RData")
+
+```
+
+
 # Introduction
 
 TBD
@@ -239,12 +247,6 @@ We now have three tidy datasets:
 2. Demographic variables and housing structure by tract (2,184 rows= 39 tracts* 7 structure age * 8 years)
 3. Demographic variables by tract (312 rows= 39 tracts * 8 years)
 
-```{r}
-#Reading saved data from census API calls.
-
-load("Flint-Zillow.RData")
-
-```
 
 ## Census Data Exploration
 
@@ -780,7 +782,7 @@ acs_geo %>%
   
 ```
 
-```{r, include=FALSE}
+```{r, eval=FALSE, include=FALSE}
 #Figuring out why there are gaps in the map
 flint_ids <- unique(merged$tract) 
 
@@ -790,6 +792,22 @@ flint_ids %in% geo_ids
 
 #It looks like all tracts merged properly, we just don't have a geometry available for tract 13500.
 ```
+
+Which parts of the city saw greater declines in home values?
+
+```{r}
+acs_geo %>%
+  mutate(totalinc = income_black_2014 + income_white_2014) %>%
+  ggplot() +
+  geom_sf(aes(fill=totalinc)) +
+  scale_fill_distiller(palette = "Greens", direction=1) +
+  theme_light() +
+  labs(title = "Flint: Household Income 2014",
+       caption="Source: American Community Survey",
+       fill="Dollars")
+```
+
+
 
 ```{r, eval=FALSE, include=FALSE}
 leaflet() %>%
