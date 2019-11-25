@@ -25,29 +25,34 @@ library(leaflet)
 library(sf)
 ```
 
-# Gathering Flint Census data (2010-2017)
+# Introduction
 
-```{r}
+TBD
+
+
+# Data Gathering
+
+## Gathering Flint Census data (2010-2017)
+
+```{r, eval=FALSE}
 cs_key <- "MY KEY"
 ```
 
 References:
 https://hrecht.github.io/censusapi/articles/getting-started.html
 
-https://datausa.io/profile/geo/flint-mi/
-
-```{r Available data census}
+```{r Available data census, cache=TRUE, eval=FALSE}
 
 apis <- listCensusApis()
-View(apis)
-
-#We are interested in the American Community Survey 5-Year Data (2009-2017), name= acs/acs5
+#View(apis)
 
 ```
 
+We are interested in the American Community Survey 5-Year Data (2009-2017), name= acs/acs5
+
 Metadata information from the American Community Survey 5-Year Data (2009-2017).
 
-```{r}
+```{r, eval=FALSE}
 #5 year detailed tables
 
 ac5_vars <- listCensusMetadata(name = "acs/acs5", vintage=2017,
@@ -89,7 +94,7 @@ B25034_004E: built 2000-2009
 
 The state of Michigan is 026, and Genessee county is 049.
 
-```{r}
+```{r, eval=FALSE}
 #5 year detailed tables
 
 #Variables that are only needed once (municipality names and housing structure age)
@@ -104,7 +109,7 @@ glimpse(flint_strage)
 ```
 
 Now we gather data for the years 2011-2017 for the variables that would change from year to year.
-```{r}
+```{r, eval=FALSE}
 #Loop for years 2010-2017
 flint_acs5 <- matrix()
 
@@ -125,11 +130,11 @@ flint_acs5 <- cbind(flint_acs5,flint_partial)
 
 ```
 
-# Data Cleaning
+## Census Data Cleaning
 
 We have 129 columns, some of which repeat across years. This step will help us organize variables for reshaping and will add clarity to variable names.
 
-```{r Changing variable names}
+```{r Changing variable names, eval=FALSE}
 
 #Removing empty first column
 flint_acs5_clean <- flint_acs5[,2:129]
@@ -163,7 +168,7 @@ Now we will keep only the census tracts that are inside of Flint.
 
 The census tracts of interest (39, obtained from Census website) are: 000100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900
 
-```{r}
+```{r, eval=FALSE}
 #Keeping only tracts of interest
 tracts <- (c(000100,001000,001100,001200,011713,013500,013600,001400,001500,001600,001700,001800,001900,000200,002000,002200,002300,002400,002600,002700, 002800,002900,000300,003000,003100,003200,003300,003400,003500,003600,003700,003800,000400,004000,000500,000600,000700,000800,000900))
 
@@ -178,9 +183,9 @@ flint_strage$tract <- as.numeric(flint_strage$tract)
 flint_strage <- flint_strage %>% filter(tract %in% tracts)
 ```
 
-# Restructure into tidy data
+## Restructure into tidy data
 
-```{r}
+```{r, cache= TRUE, eval=FALSE}
 #Gathering data
 
 #Full dataset
@@ -217,7 +222,7 @@ glimpse(flint_acs5_clean_full)
 
 Now we create a dataset with only one row per tract and year.
 
-```{r}
+```{r, eval=FALSE}
 #Dataset that doesn't include structure age
 
 flint_acs5_series <- flint_acs5_clean_full %>%
@@ -234,7 +239,14 @@ We now have three tidy datasets:
 2. Demographic variables and housing structure by tract (2,184 rows= 39 tracts* 7 structure age * 8 years)
 3. Demographic variables by tract (312 rows= 39 tracts * 8 years)
 
-# Data Exploration
+```{r}
+#Reading saved data from census API calls.
+
+load("Flint-Zillow.RData")
+
+```
+
+## Census Data Exploration
 
 * Age of housing structures, by tract
 
@@ -250,7 +262,10 @@ flint_strage %>%
   summarise(mean=cases/numhouses) %>%
   group_by(built) %>%
   summarise(proportion=mean(mean)) %>%
-  ggplot(.,aes(built,proportion)) + geom_col()
+  ggplot(.,aes(built,proportion)) +
+  geom_col() +
+  theme_light() +
+  labs(title= "Flint: Average age of housing structures")
                                     
 ```
 
@@ -319,9 +334,11 @@ flint_acs5_series %>% ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_
 ```
 
 
-# Gather Zillow data 
+## Gathering Zillow data 
+
 "ZillowR" package provides funtions to call Zillow api to get its property data. However, it only allows specific addresses as input parameter. Therefore, we need to get all the addresses in Flint. Fortunately, TIGER/Line Shapefile provides the information that allows us to make up all the potential addresses in Flint and try them with Zillow api.
-```{r}
+```{r cache=TRUE, eval=FALSE}
+
 flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% 
   arrange(.,tract) %>% 
   filter(type %in% c("m_under5","f_under5","type","population")) %>%
@@ -339,13 +356,14 @@ flint_acs5_series %>%
 ```
 
 
-# Zillow API call
+## Zillow API call
 
 "ZillowR" package provides funtions to call Zillow api to get its property data. However, it only allows specific addresses as input parameter. Therefore, we need to get all the addresses in Flint. Fortunately, TIGER/Line Shapefile provides the information that allows us to make up all the potential addresses in Flint and try them with Zillow api.
 
 First, we load the address ranges from "Address Ranges County-based Relationship File", which contains "Address range identifier"(ARID). Then we load the feature names (street names) from "Feature Names County-based Relationship File", which contains "Linear feature identifier"(LINEARID). Third, we load "Address Range-Feature Name County-based Relationship File" that describe the match between ARID and LINEARID.
 
-```{r}
+```{r, cache=TRUE, eval=FALSE}
+
 table_range<-read.dbf("Genesee County Address Range/tl_2019_26049_addr.dbf",as.is = TRUE)
 table_names<-read.dbf("Genesee County Feature Names/tl_2019_26049_featnames.dbf",as.is=TRUE)
 table_relat<-read.dbf("Genesee County Relationship File/tl_2019_26049_addrfn.dbf",as.is=TRUE)
@@ -364,7 +382,7 @@ saveRDS(table_addr_clean,"Address Frame.RData")
 ```
 
 Then, we set up the Zillow API keys. Since one Zillow API key only allows 1000 request per day, we registered 5 keys for a more efficient data gathering. We also set up a function to turn the "character(0)" and NULL value gathered into an "NA".
-```{r}
+```{r, eval=FALSE}
 zwsid<-c()
 zwsid[1]<-'key 1'
 zwsid[2]<-'key 2'
@@ -386,14 +404,16 @@ EmptytoNA <- function(x){
 ```
 
 We randomly sample 250 records out of our 44,502 address frame per day and iterate them for API request. Although our daily sample may have overlapping records across days, our sampling rate is 0.5% (250 out of 44,502) so the overlapping records would be small enough to ignore. This method guarantteed the randomization and representativeness of our sample and bug tolerance. Even if we failed to extract data in a day and we start it over tommorrow, we can still get random sampled data with enough size.
-```{r}
+
+```{r, cache=TRUE, eval=FALSE}
 frame<-readRDS("Address Frame.RData")
 set.seed(Sys.Date())
 smp_frame<-sample_n(frame,250)
 ```
 
-Then we set up the loop. The data extracted are turned into tibbles and they are merged into a final tibble. Daily data are saved for insurance.
-```{r}
+Then we set up the loop. The data extracted are turned into tibbles and they are merged into a tibble.
+```{r, cache=TRUE, eval=FALSE, include=FALSE}
+
 for(j in 1:nrow(smp_frame)){
   number<-seq(min(smp_frame$FROMHN[j],smp_frame$TOHN[j]),max(smp_frame$FROMHN[j],smp_frame$TOHN[j],by=2))
   table_zlw_j<-tibble()
@@ -464,8 +484,9 @@ for(j in 1:nrow(smp_frame)){
 save.image(paste("Zillow data",Sys.Date,".Rdata"))
 ```
 
-Then we do some data check. We finally gathered 9351 records in a tibble with 27 variables. We use the Zillow property ID(ZPID) to remove duplicates. Then we get 5843 unique records. 
-```{r}
+We gathered 9351 records in a tibble with 27 variables. We use the Zillow property ID(ZPID) to remove duplicates. We obtain 5843 unique records. 
+
+```{r, eval=FALSE}
 length(unique(table_zlw$ZPID))
   #5843
 table_zlw_nondup<-table_zlw %>% 
@@ -474,14 +495,14 @@ saveRDS(table_zlw_nondup,"Zillow data with distinct ZPID.Rdata")
 ```
 
 
-# Cleaning Zillow Data
+## Cleaning Zillow Data
 
-```{r}
+```{r, eval=FALSE}
 zillow <-readRDS("Zillow data with distinct ZPID.Rdata")
 ```
 
+Here, we double-check that there are unique records in the dataset, covert long and lat to numeric, and convert dates from character to date format.
 
-Some data cleaning steps to select only unique records in the dataset, covert long and lat to numeric, and convert dates from character to date format.
 ```{r}
 #Keeping unique records of the df
 zillow <- zillow[!duplicated(zillow[,c("ZPID")]),]
@@ -498,12 +519,13 @@ zillow$lastSoldYear <-
   as.character()
 
 ```
-We will keep records if:
+
+We will use Zillow records in our analysis if:
+
 1) Their most recent tax assessment is between 2010 and 2017 (use taxAssessment price)
 2) Their last sale date is between 2010 and 2017 (use lastSalePrice)
 
 When there is both tax assessment and house sales for the same property in different years, both will be used for analysis.
-
 
 ```{r}
 #Saving records for analysis
@@ -517,7 +539,7 @@ zillow_analysis <- zillow %>%
 We have 2,066 observations.
 
 Linking Zillow addresses to census tracts based on lat and long.
-```{r}
+```{r, eval=FALSE}
 zillow_analysis$geo <- apply(zillow_analysis, 1 , function(row) call_geolocator_latlon(row['lat'], row['long'])) #geolocator will be used for leaflet mapping later
 
 zillow_analysis$tract <- zillow_analysis$geo %>% 
@@ -526,7 +548,7 @@ zillow_analysis$tract <- zillow_analysis$geo %>%
 ```
 
 Joining Zillow and ACS data
-```{r}
+```{r, eval=FALSE}
 #Inner join Zillow and ACS data
 #Filter merged data just to records where there was a tax assessment or home sale
 
@@ -543,7 +565,7 @@ We have 812 records that are in our years of interest and could be matched to a 
 
 Creating categories for home values, by groups of 10k.
 
-```{r}
+```{r, eval=FALSE}
 #Home value categorical variable
 homecats <- c(-Inf,10000,20000,30000,40000,50000,60000,70000,80000, Inf)
 
@@ -565,7 +587,6 @@ merged %<>%
 We chart changes over time for all three categories (ACS value, tax value, home sale value) across all census tracts. We use the median (not mean) because of potential outliers in the data.
 
 ```{r}
-
 merged %>%
   select(year, taxAssessment, lastSoldPrice, homevalue, zestimate) %>%
   gather(key = type, value = value, 2:5) %>%
@@ -630,8 +651,7 @@ merged %>%
 
 Because we do not have enough records per tract to conduct a robust analysis, we will cluster observations using both Zillow and Census data and make comparisons across clusters instead of census tracts.
 
-
-# Creating clusters
+## Creating clusters
 
 We will cluster variables based on:
 bedrooms, bathrooms, finishedsqFt, rentzestimate, lat, long, black, white, fam_hh.
@@ -674,7 +694,7 @@ We will select a small number of clusters (5) in order to be able to aggregate r
 
 ```{r}
 #Number of cases per cluser
-merged %>% mutate(cluster = cutree(hc_ward, 5)) %>% group_by(cluster) %>% summarise(n())
+merged %>% mutate(cluster = cutree(hc_ward, 5)) %>% group_by(cluster) %>% summarise(count = n())
 
 #Adding cluster column
 merged %<>% mutate(cluster = cutree(hc_ward, 5))
@@ -707,52 +727,78 @@ References:
 https://rpubs.com/ben_bellman/sf_tigris
 
 
-# Mapping census tracts
+## Mapping census tracts
 
 Getting census tract files from tigris package and changing to a simpler sf format.
 
-```{r}
-flint_geo <- tracts(state = "MI", county = "Genesee")
+```{r, cache=TRUE, eval=FALSE}
+gs_geo <- tracts(state = "MI", county = "Genesee")
 
-flint_geo %<>%st_as_sf(ri)
+gs_geo %<>%st_as_sf(ri)
 ```
 
 Keep only polygons that are in Flint.
 
 ```{r}
+flint_geo %<>%
+  mutate(tract = as.numeric(TRACTCE))
 
-flint_geo %>%
-  filter(GEOID %in% unique(merged$geo))
+test <- flint_geo %>%
+  filter(tract %in% merged$tract) %>%
+  select(tract, geometry)
 ```
 
-Merging geometry with ACS/Zillow dataset.
+Merging geometry with ACS dataset. We will use this dataset for visualization rather than the merged Zillow-ACS dataset because our analysis of home values did not show much variation using tax assessments and home sale price, wheras the ACS subjective home value question did.
 
 ```{r}
+acs_geo <- full_join(flint_acs5_clean, test, by="tract")
 
+#Every tract merged!
+anti_join(test, flint_acs5_clean, by="tract")
+
+#Converting to a simpler sf format for visualization
+acs_geo <- st_as_sf(acs_geo)
 ```
 
-
-Now visualizations!
-```{r}
-st_geometry(flint_geo) %>% plot()
-
-ggplot() +
-  geom_sf(data = flint_geo, aes(fill = events), size = 0.5) +
-  geom_sf(data = samp, col = "red", shape = 3)
-
+Now visualizations! We will visualize the change in home values from 2013 to 2015, roughly when the Flint water crisis became public.
+```{r, include=FALSE}
+#Empty census tract polygons
+st_geometry(acs_geo) %>% plot()
 ```
 
-
 ```{r}
+acs_geo %>%
+  mutate(home_change = homevalue_2013 - homevalue_2016) %>%
+  select(home_change, geometry) %>%
+  ggplot() +
+  geom_sf(aes(fill=home_change)) +
+  scale_fill_distiller(palette = "RdYlGn", direction=1) +
+  theme_light() +
+  labs(title = "Flint: Change in home values 2013-2016",
+       caption="Source: American Community Survey",
+       fill="Change in dollars")
+  
+```
+
+```{r, include=FALSE}
+#Figuring out why there are gaps in the map
+flint_ids <- unique(merged$tract) 
+
+geo_ids <- unique(flint_geo$tract)
+
+flint_ids %in% geo_ids
+
+#It looks like all tracts merged properly, we just don't have a geometry available for tract 13500.
+```
+
+```{r, eval=FALSE, include=FALSE}
 leaflet() %>%
   addTiles() %>%
-  addCircles(merged, lng= merged$long, lat = merged$lat) %>%
-  addPolygons(flint_geo)
+  addCircles(merged_geo, ~lat, ~long)
 ```
 
-```{r}
+```{r, eval=FALSE, include=FALSE}
 leaflet(flint_geo) %>%
   addTiles() %>%
   addPolygons()
 ```
-
