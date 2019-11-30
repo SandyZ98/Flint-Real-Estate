@@ -333,10 +333,6 @@ flint_acs5_series$year <- flint_acs5_series$year %>% as.character()
 flint_acs5_series %>% ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_boxplot()
 ```
 
-
-## Gathering Zillow data 
-
-"ZillowR" package provides funtions to call Zillow api to get its property data. However, it only allows specific addresses as input parameter. Therefore, we need to get all the addresses in Flint. Fortunately, TIGER/Line Shapefile provides the information that allows us to make up all the potential addresses in Flint and try them with Zillow api.
 ```{r cache=TRUE, eval=FALSE}
 
 flint_acs5_series %>% gather(6,8:10,15:18,key = "type", value = "population") %>% 
@@ -729,12 +725,18 @@ https://rpubs.com/ben_bellman/sf_tigris
 
 ## Mapping census tracts
 
+```{r}
+pipe<-read.dbf("SL_Conn_11_7.dbf",as.is = TRUE)
+```
+
+
 Getting census tract files from tigris package and changing to a simpler sf format.
 
 ```{r, cache=TRUE, eval=FALSE}
-gs_geo <- tracts(state = "MI", county = "Genesee")
+load("zillow_analysis.RData")
+flint_geo <- tracts(state = "MI", county = "Genesee")
 
-gs_geo %<>%st_as_sf(ri)
+flint_geo %<>%st_as_sf(ri)
 ```
 
 Keep only polygons that are in Flint.
@@ -767,14 +769,15 @@ st_geometry(acs_geo) %>% plot()
 ```
 
 ```{r}
-acs_geo %>%
-  mutate(home_change = homevalue_2013 - homevalue_2016) %>%
-  select(home_change, geometry) %>%
+acs_geo %<>%
+  mutate(home_change_rate_1316 = (homevalue_2016 - homevalue_2013)/homevalue_2013) 
+acs_geo%>%
+  select(home_change_rate_1316, geometry) %>% 
   ggplot() +
-  geom_sf(aes(fill=home_change)) +
+  geom_sf(aes(fill=home_change_rate_1316)) +
   scale_fill_distiller(palette = "RdYlGn", direction=1) +
   theme_light() +
-  labs(title = "Flint: Change in home values 2013-2016",
+  labs(title = "Flint: Rate of change in home values 2013-2016",
        caption="Source: American Community Survey",
        fill="Change in dollars")
   
@@ -790,6 +793,18 @@ flint_ids %in% geo_ids
 
 #It looks like all tracts merged properly, we just don't have a geometry available for tract 13500.
 ```
+Let's take 
+
+
+```{r}
+pal <- colorNumeric(palette = "Blues", domain = acs_geo$home_change_rate_1316)
+st_transform(acs_geo,4326) %>% 
+  leaflet() %>% 
+  addTiles() %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.3, fillOpacity = 0.3,
+              fillColor = ~pal(home_change_rate_1316), label = ~paste("Home value in 2003:", homevalue_2013, "\r Home value in 2016:", homevalue_2016))
+```
+
 
 ```{r, eval=FALSE, include=FALSE}
 leaflet() %>%
