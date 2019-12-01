@@ -25,6 +25,7 @@ library(XML)
 library(tigris)
 library(leaflet)
 library(sf)
+library(GGally)
 ```
 
 ```{r, include=FALSE}
@@ -542,7 +543,7 @@ zillow_analysis$geo <- apply(zillow_analysis, 1 , function(row) call_geolocator_
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 zillow_analysis$tract <- zillow_analysis$geo %>% 
   substr(6,11) %>% #subsetting string
   as.numeric()
