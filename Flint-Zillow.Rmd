@@ -2,7 +2,7 @@
 title: "An analysis of residential home values after the Flint water crisis"
 author: "Ilse Paniagua and Zeping Tao"
 date: "9/9/2019"
-output: html_document
+output: pdf_document  
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This project needs the following libraries:
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(ZillowR)
 library(censusapi)
 library(tidyverse)
@@ -34,18 +34,21 @@ load("Flint-Zillow.RData")
 
 ```
 
+# Abstract
+
+This project examines the effect of the Flint water crisis on residential home values between 2010-2017. Using data from the American Community Survey (ACS), tax assessment data (Zillow), and home sale prices (Zillow), we found that only the ACS measure of a home's value showed a sharp decline after the Flint water crisis. Averaged at the tract level, our results also revealed large differences between administrative records (tax assessments and home sale prices) and the ACS question that asks respondents to estimate their home value. These differences were between 10,000 and 50,000 dollars for all census tracts in Flint. Finally, we provide visualizations showing perceived home value changes in Flint by census tract. Future research could design an experiment to casually estimate the measurement error associated with asking respondents to provide their home values under conditions of potential market change.
 
 # 0.  Introduction
 
-The Flint water crisis began in 2014, after the water supply of 100,000 people was switched from the Detroit River to the Flint River. Because water was not properly treated following the switch, the city's population was exposed to elevated lead levels.
+The Flint water crisis began in 2014, after the water supply of 100,000 people was switched from the Detroit to the Flint River. Because water was not properly treated, the city's population was exposed to elevated lead levels. Previous studies have explored the effects of the water crisis on children’s lead levels (Hanna-Attisha, 2016) and depopulation in the city due to perceptions of unsafe water (Morckel and Greg Rybarczyk, 2018).
 
-Previous studies have explored the effects of the water crisis on children’s lead levels (Hanna-Attisha, 2016) and depopulation in the city due to perceptions of unsafe water (Morckel and Greg Rybarczyk, 2018).
+This project contributes this literature by analyzing the effect of the Flint water crisis on residential home values. We use data from the American Community Survey (https://census.gov/programs-surveys/acs/) and the Zillow real estate API (https://www.zillow.com/) to examine housing trends over time at the census tract level.
 
-This project aims to analyse the effect of the Flint water crisis on residential home values. We use data from the American Community Survey (ACS) and the Zillow real estate API to examine housing trends over time.
+The ACS asks respondents to give an estimate of their home value ("About how much do you think this house and lot, appartment or mobile home (and lot, if owned) would sell for if it were for sale?"). However, we hypothesize that this question will be affected by measurement error. We argue that an individual is unlikely to know the exact value of their home at any given time. In addition to this potential failure to encode their home values, the ACS home value question may suffer from social desirability bias if an individual does not wish to be embarassed by disclosing a low price to the interviewer. It is also possible that a respondent will overestimate how much the water crisis has affected their home value and provide a price that is considerably lower than the price that their house would sell on the market at that time.
 
-While the ACS asks respondents to give an estimate of their home value ("About how much do you think this house and lot, appartment or mobile home (and lot, if owned) would sell for if it were for sale?"), we hypothesize that this survey item will be affected by measurement error. Respondents may likely not be able to give an accurate and unbiased estimate of their home's value.
+Our motivation for gathering data from the Zillow API is to obtain an objective measure of a home's value, separate from an individual's subjective perceptions. The Zillow API provides details on the latest tax assessment conducted on a property (used to calculate property taxes), as well as the last price for which this home was sold. We use both metrics as objective indicators of value and compare these to ACS estimates.
 
-We will therefore use alternative sources of data to calculate home values and compare these to the ACS on a tract level. Our research questions are as follows:
+Our research questions are as follows:
 
 1. How did home values change in Flint, MI between 2010 and 2017?
 2. Do self-report and Zillow estimates of home values agree?
@@ -56,7 +59,7 @@ The first section of this report describes ACS data gathering and cleaning steps
 
 # 1. Data Gathering from the American Community Survey
 
-We obtain a key for the Census bureau API and save this as an R object.
+To gather data from the Census API, we obtain a key for the Census bureau API and save this as an R object.
 
 ```{r, eval=FALSE}
 cs_key <- "MY KEY"
@@ -64,7 +67,7 @@ cs_key <- "MY KEY"
 
 The listCensusApis function provides a list of the various datasets provided by the census. We are interested in the American Community Survey 5-Year Data (2009-2017).
 
-```{r Available data census, cache=TRUE, eval=FALSE}
+```{r Available data census, eval=FALSE}
 
 apis <- listCensusApis()
 
@@ -80,7 +83,7 @@ ac5_geo <- listCensusMetadata(name = "acs/acs5", vintage=2017,
 
 ```
 
-From the listCensusMetadata command, we obtain the variables of interest:
+We obtain the variables of interest (from acs5_vars dataframe):
 
 B19001B_001E: income for black households
 B19001A_001E: income for white households
@@ -200,7 +203,7 @@ flint_strage <- flint_strage %>% filter(tract %in% tracts)
 
 We can now restructure our data into tidy format, with one column per variable and one row per observation.
 
-```{r, cache= TRUE, eval=FALSE}
+```{r, eval=FALSE}
 #Gathering data
 
 #Full dataset
@@ -215,11 +218,9 @@ flint_strage <-
   arrange(.,tract)
 
 #Creating year variable
-
 flint_acs5_clean <- flint_acs5_clean  %>% select(noquote(order(colnames(.)))) %>% select(state,county,tract,desc,built,cases,everything())
 
 #Reshaping data columns 7-110
-
 acs_vars <- c("income_black","income_white","f_black","m_black","black","white","m_white","f_white","f_under5","m_under5","fam_hh","hh","homevalue") %>% sort(decreasing=FALSE)
 
 flint_acs5_clean_full <- flint_acs5_clean %>% 
@@ -257,9 +258,11 @@ We now have three tidy datasets:
 
 # 2. Census Data Exploration
 
+This section contains graphics to help us understand demographic changes in Flint from 2010-2017. We will add a spatial component to these descriptives in the next sections.
+
 * Age of housing structures, by tract
 
-Calcualte the total number of houses per tract. Then, calculate what percentage belong to each category, per tract. Aggregate the results in a bar chart for each age group.
+Calculate the total number of houses per tract. Then, calculate what percentage belong to each category, per tract. Aggregate the results in a bar chart for each age group.
 
 ```{r}
 #Summary table, number of cases in each category
@@ -347,11 +350,11 @@ ACS data show a perceived decline in home values from 2014-2016. After 2017, hom
 
 # 3. Gathering Zillow data 
 
-The "ZillowR" package provides an interface to the Zillow API. However, we must specify an address as an input parameter. We use the TIGER/Line Shapefile to obtain potential addresses in Flint and try them with Zillow api.
+The "ZillowR" package provides an interface to the Zillow API. However, we must specify an address as an input parameter. We use the TIGER/Line Shapefile to obtain potential addresses in Flint.
 
 First, we load the address ranges from "Address Ranges County-based Relationship File", which contains "Address range identifier"(ARID). Then we load the feature names (street names) from "Feature Names County-based Relationship File", which contains "Linear feature identifier"(LINEARID). Lastly, we load "Address Range-Feature Name County-based Relationship File" that describes links between ARID and LINEARID.
 
-```{r, cache=TRUE, eval=FALSE, include=FALSE}
+```{r, eval=FALSE, include=FALSE}
 
 table_range<-read.dbf("Genesee County Address Range/tl_2019_26049_addr.dbf",as.is = TRUE)
 table_names<-read.dbf("Genesee County Feature Names/tl_2019_26049_featnames.dbf",as.is=TRUE)
@@ -394,14 +397,14 @@ EmptytoNA <- function(x){
 
 We randomly sample 250 records out of our 44,502 address frame per day and iterate them for API request. Although our daily sample may have overlapping records across days, our sampling rate is 0.5% (250 out of 44,502) so the overlapping records would be small enough to ignore.
 
-```{r, cache=TRUE, eval=FALSE}
+```{r, eval=FALSE}
 frame<-readRDS("Address Frame.RData")
 set.seed(Sys.Date())
 smp_frame<-sample_n(frame,250)
 ```
 
 Then we set up a loop to try to obtain information from each address in our sample of possible addresses.
-```{r, cache=TRUE, eval=FALSE, include=FALSE}
+```{r, eval=FALSE, include=FALSE}
 
 for(j in 1:nrow(smp_frame)){
   number<-seq(min(smp_frame$FROMHN[j],smp_frame$TOHN[j]),max(smp_frame$FROMHN[j],smp_frame$TOHN[j],by=2))
@@ -481,6 +484,7 @@ length(unique(table_zlw$ZPID))
   #5843
 table_zlw_nondup<-table_zlw %>% 
   distinct(ZPID,.keep_all=TRUE)
+
 saveRDS(table_zlw_nondup,"Zillow data with distinct ZPID.Rdata")
 ```
 
@@ -529,7 +533,7 @@ zillow_analysis <- zillow %>%
 ```
 
 
-Now, we link the Zillow addresses to census tracts based on the provided latitude and longitude and the tigris package.
+Now, we link the Zillow addresses to census tracts using Zillow-provided latitude and longitude and the tigris R package (call_geolocator_latlon).
 
 ```{r, eval=FALSE}
 zillow_analysis$geo <- apply(zillow_analysis, 1 , function(row) call_geolocator_latlon(row['lat'], row['long'])) #geolocator will be used for leaflet mapping later
@@ -539,7 +543,7 @@ zillow_analysis$tract <- zillow_analysis$geo %>%
   as.numeric()
 ```
 
-Now we perform an inner join on the Zillow and ACS data. 
+We perform an inner join on the Zillow and ACS data. 
 Because some Zillow addresses were not within the city bounds of Flint, we now have 815 records that are in our years of interest and could be matched to a Flint census tract.
 
 
@@ -649,8 +653,11 @@ Because we do not have enough records per tract to conduct a robust analysis, we
 
 ### Creating clusters
 
-We will cluster variables based on:
-number of bedrooms, number of bathrooms, finishedsqFt, rentzestimate, lat, long, number of black households, number of white households, and number of family households.
+We will use hierarchical clustering as a way to reduce the number of tracts we have for the analysis. We use hiererchical clustering instead of k-means to avoid discarding more observations (our dataset has missing values and K-Means requires complete records).
+
+We will cluster variables based on: 
+
+Number of bedrooms, number of bathrooms, finishedsqFt, rentzestimate, lat, long, number of black households, number of white households, and number of family households.
 
 We need to rescale variables before the analysis.
 
@@ -728,7 +735,7 @@ https://rpubs.com/ben_bellman/sf_tigris
 
 Getting census tract files from tigris package and changing to a simpler sf format.
 
-```{r, cache=TRUE, eval=FALSE}
+```{r, eval=FALSE}
 gs_geo <- tracts(state = "MI", county = "Genesee")
 
 gs_geo %<>%st_as_sf(ri)
@@ -863,4 +870,8 @@ acs_geo %>%
 
 # 5. Conclusions
 
-We observed that home values decreased more in areas with a higher percentage of black-only households.
+We found that only the ACS measure of a home's value showed a sharp decline after the Flint water crisis. Tax assessment and recorded home sales did not appear to have a substantial decline between 2013 and 2016. However, the design of our study is observational and based only on individuals that chose to sell their home or had a tax assessment in these years. Based on the perception that their home price had declined, homeowners may have purposefully kept their homes off the market. It is also possible that the city did not perform as many tax assessments in these years to avoid lowering the tax base for the city, or did not sufficiently take the water crisis into account when estimating home values. We also only had access to properties that were available on the Zillow API, which may not be representative of the whole city.
+
+Our results also showed very large differences (10,000 - 50,000 dollars) between administrative records (tax assessments and home sale prices) and the ACS home value question averaged at the tract level. An experimental research design, where a respondent's records are matched to their tax assessment or last sale price, would have better allowed us to causally estimate measurement error associated with the ACS home value question.
+
+Finally, we provide visualizations showing perceived home value changes in Flint by census tract using ACS data. We observed that home values decreased more in areas with a higher percentage of black-only households, as well as the downtown Flint area.
