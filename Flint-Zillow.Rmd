@@ -25,6 +25,8 @@ library(XML)
 library(tigris)
 library(leaflet)
 library(sf)
+library(ggpubr)
+library(GGally)
 ```
 
 ```{r, include=FALSE}
@@ -604,6 +606,47 @@ merged %>%
 
 We see a large difference between ACS, tax assessment, and home sale values. We will explore this further with research question 2.
 
+
+```{r}
+pal <- colorNumeric(palette = "Blues", domain = acs_geo$home_change_rate_1316)
+st_transform(acs_geo,4326) %>% 
+  leaflet() %>% 
+  addTiles() %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.3, fillOpacity = 0.3,
+              fillColor = ~pal(home_change_rate_1316), label = ~paste("Home value in 2003:", homevalue_2013, "\r Home value in 2016:", homevalue_2016))
+```
+
+
+Flint is overall a poor city. There is no obvious spatial pattern for income.
+
+Now we examine the racial composition of the city. We know that Flint is roughly a half white, half black city in terms of its population.
+```{r}
+acs_geo %>%
+  mutate(pctblack = black_2014/(black_2014 + white_2014)) %>%
+  ggplot() +
+  geom_sf(aes(fill=pctblack)) +
+  scale_fill_distiller(palette = "Blues", direction=1) +
+  theme_light() +
+  labs(title = "Flint: Percent Black-Only Households in 2014",
+       caption="Source: American Community Survey",
+       fill="Percentage")
+```
+
+Do some areas have more children under the age of five? This population is especially affected by lead in their system.
+
+```{r}
+acs_geo %>%
+  mutate(under5 = f_under5_2014 + m_under5_2014) %>%
+  ggplot() +
+  geom_sf(aes(fill=under5)) +
+  scale_fill_distiller(palette = "Oranges", direction=1) +
+  theme_light() +
+  labs(title = "Flint: Number of children under five in 2014",
+       caption="Source: American Community Survey",
+       fill="Number")
+```
+
+
 ## Research question 2: Do Zillow and ACS prices match?
 
 Do ACS category and Zillow categories match, on average by census tract?
@@ -727,14 +770,19 @@ These differences vary by tract but are again in the range of 10,000-30,000 diff
 References:
 https://rpubs.com/ben_bellman/sf_tigris
 
-
-### Mapping census tracts
-
+### Measure lead pipe coverage at the tract level
+We use ArcGIS to calculate the lead-pipe-influenced area and census tract area and then spatially join them. Then we load the data from ArcGIS from a ".dbf" file. The measure we use is the coverage rate, which is the sum of lead-pipe-influenced area in a tract divided by the area of that census tract. The higher the coverage rate, the more possible that the housing prices in that census tract are affected.
 ```{r}
-pipe<-read.dbf("SL_Conn_11_7.dbf",as.is = TRUE)
+pipe_raw<-read.dbf("Lea_pipes_for_area_cal.dbf",as.is = TRUE)
+pipe_coverage<-pipe_raw %>% 
+  select(STATEFP,COUNTYFP,TRACTCE,GEOID,NAME,NAMELSAD,TRACTA,Area,Tract_area) %>% 
+  group_by(TRACTCE) %>% 
+  summarise(sum_pipe_area=sum(Area),Tract_area=unique()) %>% 
+  mutate(coverage=sum_pipe_area/Tract_area)
+tract_pipe_coverage <- aggregate(TRACTCE~coverage,data=pipe_coverage,FUN=mean)
 ```
 
-
+### Mapping census tracts
 Getting census tract files from tigris package and changing to a simpler sf format.
 
 ```{r, cache=TRUE, eval=FALSE}
@@ -805,20 +853,12 @@ ggplot() +
   labs(title = "Clusters from ACS and Zillow data")
 ```
 
-We will visualize the change in home values from 2013 to 2015, roughly when the Flint water crisis became public.
+We will visualize the change in home values from 2013 to 2016, roughly when the Flint water crisis became public.
 
 ```{r}
-<<<<<<< HEAD
-acs_geo %<>%
-  mutate(home_change_rate_1316 = (homevalue_2016 - homevalue_2013)/homevalue_2013) 
-acs_geo%>%
-  select(home_change_rate_1316, geometry) %>% 
-=======
-#Map of change in home values
-acs_geo %>%
-  mutate(home_change = homevalue_2013 - homevalue_2016) %>%
-  select(home_change, geometry) %>%
->>>>>>> 23733c050f615c097f16918b438e82aba3af3269
+rate_of_change_housing <- acs_geo %>%
+  mutate(home_change_rate_1316 = (homevalue_2016 - homevalue_2013)/homevalue_2013) %>% 
+  merge(pipe_coverage,by="tract") %>% 
   ggplot() +
   geom_sf(aes(fill=home_change_rate_1316)) +
   scale_fill_distiller(palette = "RdYlGn", direction=1) +
@@ -826,8 +866,33 @@ acs_geo %>%
   labs(title = "Flint: Rate of change in home values 2013-2016",
        caption="Source: American Community Survey",
        fill="Change in dollars")
-  
+rate_of_change_housing
 ```
+
+Here are the coverage rate of lead-pipe-influence area for each census tract.
+```{r}
+Lead_pipe_coverage<-acs_geo %>%
+  merge(pipe_coverage,by="tract") %>% 
+  ggplot() +
+  geom_sf(aes(fill=coverage)) +
+  scale_fill_distiller(palette = "PuBu", direction=1) +
+  theme_light() +
+  labs(title = "Flint: Coverage rate of lead-pipe-influence area 2013-2016",
+       caption="Source: American Community Survey",
+       fill="Lead pipe coverage")
+Lead_pipe_coverage
+```
+
+correlation
+```{r}
+flint_acs5_clean %>%
+  mutate(home_change_rate_1316 = (homevalue_2016 - homevalue_2013)/homevalue_2013) %>% 
+  merge(pipe_coverage,by="tract") %>%
+  select(home_change_rate_1316,coverage) %>% 
+  unique() %>% 
+  ggpairs()
+```
+
 
 The map above shows that the northwest part of Flint in particular saw a decline in home values between 2013 and 2016. Some areas of the city appear to have increased their home values.
 
@@ -849,45 +914,6 @@ acs_geo %>%
 ```
 Let's take 
 
-
-```{r}
-pal <- colorNumeric(palette = "Blues", domain = acs_geo$home_change_rate_1316)
-st_transform(acs_geo,4326) %>% 
-  leaflet() %>% 
-  addTiles() %>%
-  addPolygons(stroke = FALSE, smoothFactor = 0.3, fillOpacity = 0.3,
-              fillColor = ~pal(home_change_rate_1316), label = ~paste("Home value in 2003:", homevalue_2013, "\r Home value in 2016:", homevalue_2016))
-```
-
-
-Flint is overall a poor city. There is no obvious spatial pattern for income.
-
-Now we examine the racial composition of the city. We know that Flint is roughly a half white, half black city in terms of its population.
-```{r}
-acs_geo %>%
-  mutate(pctblack = black_2014/(black_2014 + white_2014)) %>%
-  ggplot() +
-  geom_sf(aes(fill=pctblack)) +
-  scale_fill_distiller(palette = "Blues", direction=1) +
-  theme_light() +
-  labs(title = "Flint: Percent Black-Only Households in 2014",
-       caption="Source: American Community Survey",
-       fill="Percentage")
-```
-
-Do some areas have more children under the age of five? This population is especially affected by lead in their system.
-
-```{r}
-acs_geo %>%
-  mutate(under5 = f_under5_2014 + m_under5_2014) %>%
-  ggplot() +
-  geom_sf(aes(fill=under5)) +
-  scale_fill_distiller(palette = "Oranges", direction=1) +
-  theme_light() +
-  labs(title = "Flint: Number of children under five in 2014",
-       caption="Source: American Community Survey",
-       fill="Number")
-```
 
 
 # 5. Conclusions
