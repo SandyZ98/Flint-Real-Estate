@@ -264,7 +264,7 @@ This section contains graphics to help us understand demographic changes in Flin
 Calculate the total number of houses per tract. Then, calculate what percentage belong to each category, per tract. Aggregate the results in a bar chart for each age group.
 
 ```{r}
-#Summary table, number of cases in each category
+#Barchart, number of cases in each category
 
 flint_strage %>%
   group_by(tract) %>% 
@@ -539,7 +539,10 @@ Now, we link the Zillow addresses to census tracts using Zillow-provided latitud
 
 ```{r, eval=FALSE}
 zillow_analysis$geo <- apply(zillow_analysis, 1 , function(row) call_geolocator_latlon(row['lat'], row['long'])) #geolocator will be used for leaflet mapping later
+```
 
+
+```{r}
 zillow_analysis$tract <- zillow_analysis$geo %>% 
   substr(6,11) %>% #subsetting string
   as.numeric()
@@ -564,7 +567,7 @@ anti_join(zillow_analysis, flint_acs5_series, by="tract")
 
 Now, we create buckets of categories for home values, grouped by ten thousand (10ks). We create categories for the ACS homevalue variable, the Zillow-provided tax assessment, and the Zillow-provided last sale price variable.
 
-```{r, eval=FALSE}
+```{r}
 #Home value categorical variable
 homecats <- c(-Inf,10000,20000,30000,40000,50000,60000,70000,80000, Inf)
 
@@ -779,7 +782,7 @@ geo_ids <- unique(flint_geo$tract)
 flint_ids %in% geo_ids
 ```
 
-Now visualizations! Here, we map the property addresses from Zillow.
+Now visualizations! Here, we map the property addresses from Zillow that we gathered.
 
 ```{r}
 #Gathered obs.
@@ -840,20 +843,22 @@ We saw that cluster 4 was able to match the ACS subjective home value variable b
 
 We use ArcGIS to calculate the lead-pipe-influenced area and census tract area and then spatially join them. Then we load the data from ArcGIS from a ".dbf" file. The measure we use is the coverage rate, which is the sum of lead-pipe-influenced area in a tract divided by the area of that census tract. The higher the coverage rate, the more possible that the housing prices in that census tract are affected.
 
-```{r}
+```{r eval=FALSE}
 pipe_raw<-read.dbf("Lea_pipes_for_area_cal.dbf",as.is = TRUE)
-pipe_coverage<-pipe_raw %>% 
-  select(STATEFP,COUNTYFP,TRACTCE,GEOID,NAME,NAMELSAD,TRACTA,Area,Tract_area) %>% 
-  group_by(TRACTCE) %>% 
-  summarise(sum_pipe_area=sum(Area),Tract_area=unique()) %>% 
-  mutate(coverage=sum_pipe_area/Tract_area)
-tract_pipe_coverage <- aggregate(TRACTCE~coverage,data=pipe_coverage,FUN=mean)
+
+#Calculate percentage of tract that is covered by lead pipes
+pipe_coverage <- pipe_raw %>% 
+  group_by(TRACTCE) %>%
+  mutate(sum_pipe_area = sum(Area), tract = as.numeric(TRACTCE)) %>%
+  group_by(tract) %>%
+  mutate(coverage = sum_pipe_area/Tract_area) %>%
+  summarise(coverage = mean(coverage))
 ```
 
-
+We calculate how much area of each tract is covered by lead pipes. As much as 20% of one tract has lead pipes!
 ```{r}
 acs_geo %>%
-  merge(pipe_coverage,by="tract") %>% 
+  merge(pipe_coverage, by="tract") %>% 
   ggplot() +
   geom_sf(aes(fill=coverage)) +
   scale_fill_distiller(palette = "PuBu", direction=1) +
@@ -928,6 +933,25 @@ acs_geo %>%
   labs(title = "Flint: Number of children under five in 2014",
        caption="Source: American Community Survey",
        fill="Number")
+```
+
+Which areas of Flint have the oldest houses?
+
+```{r}
+acs_geo %>%
+  group_by(tract) %>% 
+  mutate(numhouses=sum(cases)) %>%
+  group_by(built,tract) %>%
+  summarise(mean=cases/numhouses) %>%
+  filter(built %in% c("1940-1949", "1950-1959")) %>%
+  ggplot() +
+  geom_sf(aes(fill=mean)) + 
+  scale_fill_distiller(palette = "Oranges", direction=1) +
+  theme_light() +
+  labs(title = "Flint: Proportion of houses built between 1940-1959",
+       caption="Source: American Community Survey",
+       fill="Proportion")
+  
 ```
 
 
