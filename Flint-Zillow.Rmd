@@ -348,9 +348,12 @@ flint_acs5_series %>% ggplot(., aes(x=year, y=homevalue)) + geom_point() + geom_
 
 ACS data show a perceived decline in home values from 2014-2016. After 2017, home values seem to have increased drastically.
 
+
 # 3. Gathering Zillow data 
 
 The "ZillowR" package provides an interface to the Zillow API. However, we must specify an address as an input parameter. We use the TIGER/Line Shapefile to obtain potential addresses in Flint.
+
+The "ZillowR" package provides an interface to the Zillow API. However, we must specify an address as an input parameter. We use the TIGER/Line Shapefile to obtain potential addresses in Flint and try them with Zillow api.
 
 First, we load the address ranges from "Address Ranges County-based Relationship File", which contains "Address range identifier"(ARID). Then we load the feature names (street names) from "Feature Names County-based Relationship File", which contains "Linear feature identifier"(LINEARID). Lastly, we load "Address Range-Feature Name County-based Relationship File" that describes links between ARID and LINEARID.
 
@@ -733,12 +736,24 @@ https://rpubs.com/ben_bellman/sf_tigris
 
 ### Mapping census tracts
 
+```{r}
+pipe<-read.dbf("SL_Conn_11_7.dbf",as.is = TRUE)
+```
+
+
 Getting census tract files from tigris package and changing to a simpler sf format.
 
 ```{r, eval=FALSE}
 gs_geo <- tracts(state = "MI", county = "Genesee")
+```
 
-gs_geo %<>%st_as_sf(ri)
+
+```{r, cache=TRUE, eval=FALSE}
+load("zillow_analysis.RData")
+flint_geo <- tracts(state = "MI", county = "Genesee")
+>>>>>>> b49bd0175b483a7d9e41c06e1a73802f1f90458b
+
+flint_geo %<>%st_as_sf(ri)
 ```
 
 Keep only polygons that are in Flint.
@@ -805,15 +820,20 @@ ggplot() +
 We will visualize the change in home values from 2013 to 2015, roughly when the Flint water crisis became public.
 
 ```{r}
+acs_geo %<>%
+  mutate(home_change_rate_1316 = (homevalue_2016 - homevalue_2013)/homevalue_2013) 
+acs_geo%>%
+  select(home_change_rate_1316, geometry) %>% 
+
 #Map of change in home values
 acs_geo %>%
   mutate(home_change = homevalue_2013 - homevalue_2016) %>%
   select(home_change, geometry) %>%
   ggplot() +
-  geom_sf(aes(fill=home_change)) +
+  geom_sf(aes(fill=home_change_rate_1316)) +
   scale_fill_distiller(palette = "RdYlGn", direction=1) +
   theme_light() +
-  labs(title = "Flint: Change in home values 2013-2016",
+  labs(title = "Flint: Rate of change in home values 2013-2016",
        caption="Source: American Community Survey",
        fill="Change in dollars")
   
@@ -837,6 +857,18 @@ acs_geo %>%
        caption="Source: American Community Survey",
        fill="Dollars")
 ```
+Let's take 
+
+
+```{r}
+pal <- colorNumeric(palette = "Blues", domain = acs_geo$home_change_rate_1316)
+st_transform(acs_geo,4326) %>% 
+  leaflet() %>% 
+  addTiles() %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.3, fillOpacity = 0.3,
+              fillColor = ~pal(home_change_rate_1316), label = ~paste("Home value in 2003:", homevalue_2013, "\r Home value in 2016:", homevalue_2016))
+```
+
 
 Flint is overall a poor city. There is no obvious spatial pattern for income.
 
