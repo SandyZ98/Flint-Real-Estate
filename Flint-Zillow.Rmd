@@ -812,7 +812,7 @@ We visualize the change in home values from 2013 to 2016, roughly when the Flint
 ```{r}
 #Map of change in home values (dollars)
 acs_geo %>%
-  mutate(home_change = homevalue_2013 - homevalue_2016) %>%
+  mutate(home_change = homevalue_2016 - homevalue_2013) %>%
   select(home_change, geometry) %>%
   ggplot() +
   geom_sf(aes(fill=home_change)) +
@@ -838,7 +838,7 @@ acs_geo %>%
 
 The map above shows that the northwest part of Flint in particular saw a decline in home values between 2013 and 2016. Some areas of the city appear to have increased their home values.
 
-We saw that cluster 4 was able to match the ACS subjective home value variable better than the other clusters. Perhaps this is because cluster 4 also saw a net increase in home values, and this matched the expectations of those residents.
+We saw that cluster 4 was able to match the ACS subjective home value variable better than the other clusters. Perhaps this is because cluster 4 also saw a net decrease in home values, and this matched the expectations of those residents.
 
 ## Lead pipe data
 
@@ -881,7 +881,7 @@ flint_acs5_clean %>%
 
 There is a very low correlation between lead tract coverage and percentage change in home values.
 
-Here, we explore other spatial trends to help us understand the demographic characteristics of northwest Flint.
+Here, we explore other spatial trends to help us understand the demographic characteristics of southeast Flint.
 
 ```{r}
 #Map of household income
@@ -896,20 +896,9 @@ acs_geo %>%
        fill="Dollars")
 ```
 
-
-```{r}
-#pal <- colorNumeric(palette = "Blues", domain = acs_geo$home_change_rate_1316)
-#st_transform(acs_geo,4326) %>% 
-  #leaflet() %>% 
-  #addTiles() %>%
-  #addPolygons(stroke = FALSE, smoothFactor = 0.3, fillOpacity = 0.3,
-              #fillColor = ~pal(home_change_rate_1316), label = ~paste("Home value in 2003:", homevalue_2013, "\r Home value in 2016:", homevalue_2016))
-```
-
-
 Flint is overall a poor city. There is no obvious spatial pattern for income.
 
-Now we examine the racial composition of the city. We know that Flint is roughly a half white, half black city in terms of its population.
+Now we examine the racial composition of the city. We know that Flint is roughly a half white, half black city in terms of its population. The northwest part of the city has a higher proportion of black-only households.
 ```{r}
 acs_geo %>%
   mutate(pctblack = black_2014/(black_2014 + white_2014)) %>%
@@ -936,7 +925,7 @@ acs_geo %>%
        fill="Number")
 ```
 
-Which areas of Flint have the oldest houses?
+Which areas of Flint have the oldest houses? Houses built between 1940 and 1959 appear to be about evenly spread across the city.
 
 ```{r}
 acs_geo %>%
@@ -957,10 +946,10 @@ acs_geo %>%
 
 # 5. Conclusions
 
-We found that only the ACS measure of a home's value showed a sharp decline after the Flint water crisis. Tax assessment and recorded home sales did not appear to have a substantial decline between 2013 and 2016. However, the design of our study is observational and based only on individuals that chose to sell their home or had a tax assessment in these years. Based on the perception that their home price had declined, homeowners may have purposefully kept their homes off the market.
+We found that only the ACS measure of a home's value showed a sharp decline after the Flint water crisis. Tax assessment and recorded home sales did not appear to have a substantial decline between 2013 and 2016. However, the design of our study is observational and based only on individuals that chose to sell their home or had a tax assessment in these years. Based on the perception that their home price had declined, homeowners may have purposefully kept their homes off the market. This would mean that Zillow data is not representative of the city as a whole.
 
-It is also possible that the city did not perform as many tax assessments in these years to avoid lowering the tax base for the city, or did not sufficiently take the water crisis into account when estimating home values. We only had access to properties that were available on the Zillow API, which may not be representative of the whole city. Another possible source of error comes from the fact that only the most up-to-date record of tax assessment and sold price on Zillow can be extracted. We are not able to follow prices estimates for the same house over time.
+It is also possible that the city did not perform as many tax assessments in these years to avoid lowering the tax base for the city, or did not sufficiently take the water crisis into account when estimating home values. Another possible source of error comes from the fact that only the most up-to-date record of tax assessment and sold price on Zillow can be extracted. We are not able to follow prices estimates for the same house over time.
 
 Our results also showed very large differences (10,000 - 50,000 dollars) between administrative records (tax assessments and home sale prices) and the ACS home value question averaged at the tract level. Future studies can adopt an experimental research design, where a respondent's records are matched to their tax assessment or last sale price, to better estimate measurement error associated with the ACS home value question.
 
-Finally, we provide visualizations showing perceived home value changes in Flint by census tract using ACS data. We observed that home values decreased more in areas with a higher percentage of black-only households, as well as the downtown Flint area. We did not find a strong correlation between lead coverage per tract and changes in home prices between 2013 and 2016.
+Finally, we provide visualizations showing perceived home value changes in Flint by census tract using ACS data. We observed that home values decreased more in the southeast and downtown Flint area. We did not find a strong correlation between lead coverage per tract and changes in home prices between 2013 and 2016.
