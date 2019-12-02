@@ -811,7 +811,7 @@ We visualize the change in home values from 2013 to 2016, roughly when the Flint
 ```{r}
 #Map of change in home values (dollars)
 acs_geo %>%
-  mutate(home_change = homevalue_2016 - homevalue_2013) %>%
+  mutate(home_change = homevalue_2013 - homevalue_2016) %>%
   select(home_change, geometry) %>%
   ggplot() +
   geom_sf(aes(fill=home_change)) +
@@ -956,8 +956,10 @@ acs_geo %>%
 
 # 5. Conclusions
 
-We found that only the ACS measure of a home's value showed a sharp decline after the Flint water crisis. Tax assessment and recorded home sales did not appear to have a substantial decline between 2013 and 2016. However, the design of our study is observational and based only on individuals that chose to sell their home or had a tax assessment in these years. Based on the perception that their home price had declined, homeowners may have purposefully kept their homes off the market. It is also possible that the city did not perform as many tax assessments in these years to avoid lowering the tax base for the city, or did not sufficiently take the water crisis into account when estimating home values. We also only had access to properties that were available on the Zillow API, which may not be representative of the whole city. Another possible source of error come from the fact that only the most up-to-date record of tax assessment and sold price on Zillow can be extracted, which means the data representing an earlier year imply that information of the property has stopped updating for years.
+We found that only the ACS measure of a home's value showed a sharp decline after the Flint water crisis. Tax assessment and recorded home sales did not appear to have a substantial decline between 2013 and 2016. However, the design of our study is observational and based only on individuals that chose to sell their home or had a tax assessment in these years. Based on the perception that their home price had declined, homeowners may have purposefully kept their homes off the market.
 
-Our results also showed very large differences (10,000 - 50,000 dollars) between administrative records (tax assessments and home sale prices) and the ACS home value question averaged at the tract level. An experimental research design, where a respondent's records are matched to their tax assessment or last sale price, would have better allowed us to causally estimate measurement error associated with the ACS home value question.
+It is also possible that the city did not perform as many tax assessments in these years to avoid lowering the tax base for the city, or did not sufficiently take the water crisis into account when estimating home values. We only had access to properties that were available on the Zillow API, which may not be representative of the whole city. Another possible source of error comes from the fact that only the most up-to-date record of tax assessment and sold price on Zillow can be extracted. We are not able to follow prices estimates for the same house over time.
 
-Finally, we provide visualizations showing perceived home value changes in Flint by census tract using ACS data. We observed that home values decreased more in areas with a higher percentage of black-only households, as well as the downtown Flint area.
+Our results also showed very large differences (10,000 - 50,000 dollars) between administrative records (tax assessments and home sale prices) and the ACS home value question averaged at the tract level. Future studies can adopt an experimental research design, where a respondent's records are matched to their tax assessment or last sale price, to better estimate measurement error associated with the ACS home value question.
+
+Finally, we provide visualizations showing perceived home value changes in Flint by census tract using ACS data. We observed that home values decreased more in areas with a higher percentage of black-only households, as well as the downtown Flint area. We did not find a strong correlation between lead coverage per tract and changes in home prices between 2013 and 2016.
