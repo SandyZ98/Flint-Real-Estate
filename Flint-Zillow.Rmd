@@ -864,7 +864,7 @@ acs_geo %>%
   geom_sf(aes(fill=coverage)) +
   scale_fill_distiller(palette = "PuBu", direction=1) +
   theme_light() +
-  labs(title = "Flint: Coverage rate of lead-pipe-influence area 2013-2016",
+  labs(title = "Flint: Percent of tract covered by lead pipes 2013-2016",
        caption="Source: American Community Survey",
        fill="Lead pipe coverage")
 ```
