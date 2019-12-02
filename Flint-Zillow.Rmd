@@ -2,14 +2,16 @@
 title: "An analysis of residential home values after the Flint water crisis"
 author: "Ilse Paniagua and Zeping Tao"
 date: "12/02/2019"
-output: pdf_document
-        toc: yes
+output: 
+  pdf_document:
+     toc: TRUE
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,tidy.opts=list(width.cutoff=40),tidy=TRUE,fig.height=3,fig.width=6,warning=FALSE)
 ```
 
+\pagebreak
 
 This project needs the following libraries:
 
@@ -25,7 +27,6 @@ library(magrittr)
 library(foreign)
 library(XML)
 library(tigris)
-library(leaflet)
 library(sf)
 library(GGally)
 ```
