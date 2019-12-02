@@ -843,7 +843,7 @@ We saw that cluster 4 was able to match the ACS subjective home value variable b
 
 ## Lead pipe data
 
-We use ArcGIS to calculate the lead-pipe-influenced area and census tract area and then spatially join them. Then we load the data from ArcGIS from a ".dbf" file. The measure we use is the coverage rate, which is the sum of lead-pipe-influenced area in a tract divided by the area of that census tract. The higher the coverage rate, the more possible that the housing prices in that census tract are affected.
+We use ArcGIS to calculate the lead-pipe-influenced area and census tract area and then spatially join them. Then we load the data from ArcGIS from a ".dbf" file. The measure we use is the coverage rate, which is the sum of lead-pipe-influenced area in a tract divided by the area of that census tract. Our hypothesis is that the higher the coverage rate, the more possible that the housing prices in that census tract are affected.
 
 ```{r eval=FALSE}
 pipe_raw<-read.dbf("Lea_pipes_for_area_cal.dbf",as.is = TRUE)
