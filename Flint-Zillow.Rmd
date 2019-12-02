@@ -1,8 +1,9 @@
 ---
 title: "An analysis of residential home values after the Flint water crisis"
 author: "Ilse Paniagua and Zeping Tao"
-date: "9/9/2019"
-output: pdf_document  
+date: "12/02/2019"
+output: pdf_document
+        toc: yes
 ---
 
 ```{r setup, include=FALSE}
