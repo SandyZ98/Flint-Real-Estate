@@ -1,6 +1,6 @@
 Using census and Zillow API data to analyze changes in housing prices over time.
 
-1. How did residential home values change after the Flint water criss?
+1. How did residential home values change after the Flint water crisis?
 2. Do census and Zillow prices agree with each other?
 3. Did home values change more in areas with known lead pipes?
 
